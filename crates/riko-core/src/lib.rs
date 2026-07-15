@@ -16,6 +16,7 @@ pub mod progress;
 pub mod setup;
 pub mod shortcuts;
 pub mod updater;
+pub mod wine_versions;
 pub mod uri;
 
 pub use config::Config;

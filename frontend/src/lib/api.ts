@@ -157,6 +157,31 @@ export const switchAccount = (username: string) =>
 export const removeAccount = (username: string) =>
   invoke<AccountView[]>("remove_account", { username });
 
+export interface InstalledWine {
+  name: string;
+  wine_binary: string;
+}
+
+export interface AvailableWine {
+  name: string;
+  download_url: string;
+  size_mb: number;
+}
+
+export interface WineVersions {
+  installed: InstalledWine[];
+  available: AvailableWine[];
+  active_binary: string;
+}
+
+export const listWineVersions = () => invoke<WineVersions>("list_wine_versions");
+
+export const installWineVersion = (url: string) =>
+  invoke<InstalledWine>("install_wine_version", { url });
+
+export const removeWineVersion = (name: string) =>
+  invoke<void>("remove_wine_version", { name });
+
 export interface LaunchOverrides {
   wine_binary: string | null;
   use_esync: boolean | null;

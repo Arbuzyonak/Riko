@@ -3304,6 +3304,7 @@ dependencies = [
  "url",
  "which",
  "winreg",
+ "xz2",
  "zip",
  "zstd",
 ]

@@ -29,6 +29,7 @@ discord-rich-presence = "0.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+xz2 = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

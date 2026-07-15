@@ -136,10 +136,24 @@ pub fn receiver_running() -> bool {
 
 pub fn game_process_running() -> bool {
     Command::new("pgrep")
-        .args(["-f", "Vortex\\.exe"])
+        .args(["-a", "-f", "Vortex\\.exe"])
         .output()
-        .map(|out| out.status.success())
+        .map(|out| {
+            String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .filter_map(|line| line.split_once(' ').map(|(_, cmd)| cmd))
+                .any(is_game_process_cmdline)
+        })
         .unwrap_or(false)
+}
+
+fn is_game_process_cmdline(cmd: &str) -> bool {
+    if !cmd.contains("Vortex.exe") {
+        return false;
+    }
+    let program = cmd.split_whitespace().next().unwrap_or("");
+    let base = program.rsplit('/').next().unwrap_or(program);
+    !matches!(base, "pgrep" | "pkill" | "grep" | "egrep" | "fgrep")
 }
 
 pub fn kill_game_processes(cfg: &Config) {
@@ -156,4 +170,26 @@ pub fn kill_game_processes(cfg: &Config) {
 
 pub(crate) fn is_root() -> bool {
     unsafe { libc::getuid() == 0 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_game_process_cmdline;
+
+    #[test]
+    fn matches_real_wine_game_process() {
+        assert!(is_game_process_cmdline(
+            "/home/u/.local/share/riko/wine/wine-9.0/bin/wine C:\\Vortex.exe vortex://play"
+        ));
+        assert!(is_game_process_cmdline("gamemoderun wine Z:\\home\\u\\Vortex.exe"));
+        assert!(is_game_process_cmdline("C:\\Program Files\\Vortex.exe"));
+    }
+
+    #[test]
+    fn ignores_tooling_that_merely_mentions_the_exe() {
+        assert!(!is_game_process_cmdline("pgrep -a -f Vortex\\.exe"));
+        assert!(!is_game_process_cmdline("pkill -f Vortex\\.exe"));
+        assert!(!is_game_process_cmdline("grep Vortex.exe"));
+        assert!(!is_game_process_cmdline("/bin/sh /path/run.sh"));
+    }
 }

@@ -7,18 +7,24 @@
   import Library from "./routes/Library.svelte";
   import Login from "./routes/Login.svelte";
   import GameDetail from "./routes/GameDetail.svelte";
+  import SetupWizard from "./routes/SetupWizard.svelte";
+  import Settings from "./routes/Settings.svelte";
   import Placeholder from "./routes/Placeholder.svelte";
   import { toast } from "./lib/stores/toast.svelte";
   import { initSessionEvents } from "./lib/stores/session.svelte";
+  import { initProgressEvents } from "./lib/stores/progress.svelte";
 
   onMount(async () => {
     await initSessionEvents();
+    await initProgressEvents();
     await refreshStatus();
     if (appState.status?.migrated_from_tempest) {
       toast("Imported your existing tempest configuration", "success");
     }
     if (!appState.status?.logged_in) {
       navigate("/login");
+    } else if (appState.status?.setup_needed) {
+      navigate("/setup");
     }
   });
 
@@ -39,12 +45,14 @@
     <main class="flex-1 overflow-y-auto">
       {#if router.path === "/login"}
         <Login />
+      {:else if router.path === "/setup"}
+        <SetupWizard />
       {:else if router.path === "/plugins"}
         <Placeholder title="Plugins" />
       {:else if router.path === "/doctor"}
         <Placeholder title="Doctor" />
       {:else if router.path === "/settings"}
-        <Placeholder title="Settings" />
+        <Settings />
       {:else if router.path.startsWith("/game/")}
         <GameDetail />
       {:else}

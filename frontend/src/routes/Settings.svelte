@@ -142,6 +142,12 @@
         onchange={(v) => patch({ auto_update: v })}
       />
       <Toggle
+        checked={cfg.minimize_while_playing}
+        label="Minimize while playing"
+        hint="Hide the launcher during a game and bring it back when the game closes"
+        onchange={(v) => patch({ minimize_while_playing: v })}
+      />
+      <Toggle
         checked={cfg.presence_enabled}
         label="Discord Rich Presence"
         hint="Show what you're playing on Discord"

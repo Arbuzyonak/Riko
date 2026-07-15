@@ -1,7 +1,15 @@
 <script lang="ts">
   import { gamesState, loadGames } from "../lib/stores/games.svelte";
   import { loadPlaytime } from "../lib/stores/playtime.svelte";
+  import { statsState, loadStats } from "../lib/stores/stats.svelte";
   import GameCard from "../lib/components/GameCard.svelte";
+
+  const sortedGames = $derived(
+    [...gamesState.games].sort(
+      (a, b) =>
+        (statsState.entries[b.id]?.visits ?? 0) - (statsState.entries[a.id]?.visits ?? 0)
+    )
+  );
 
   $effect(() => {
     if (!gamesState.loaded && !gamesState.loading) {
@@ -11,6 +19,7 @@
 
   $effect(() => {
     loadPlaytime(true);
+    loadStats();
   });
 </script>
 
@@ -59,7 +68,7 @@
     </div>
   {:else}
     <div class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
-      {#each gamesState.games as game (game.id)}
+      {#each sortedGames as game (game.id)}
         <GameCard {game} />
       {/each}
     </div>

@@ -1,0 +1,10 @@
+[plugin]
+name = "vkbasalt"
+version = "1.0.0"
+description = "Contrast-adaptive sharpening via vkBasalt; toggle in-game with Home (requires the vkbasalt package)"
+type = "env-only"
+platforms = ["linux"]
+
+[env]
+ENABLE_VKBASALT = "1"
+VKBASALT_CONFIG_FILE = "${PLUGIN_DIR}/vkBasalt.conf"

@@ -1,6 +1,7 @@
 use crate::state::AppState;
-use riko_core::games::Game;
+use riko_core::games::{Game, GameStats};
 use riko_core::RikoError;
+use std::collections::HashMap;
 use tauri::State;
 
 #[tauri::command]
@@ -16,4 +17,15 @@ pub async fn list_games(state: State<'_, AppState>, refresh: bool) -> Result<Vec
         cfg.auth.session_token.clone().ok_or(RikoError::NotLoggedIn)?
     };
     riko_core::games::fetch_all(&token).await
+}
+
+#[tauri::command]
+pub async fn get_game_stats(
+    state: State<'_, AppState>,
+) -> Result<HashMap<u32, GameStats>, RikoError> {
+    let token = {
+        let cfg = state.config.read().await;
+        cfg.auth.session_token.clone().ok_or(RikoError::NotLoggedIn)?
+    };
+    riko_core::games::fetch_stats(&token).await
 }

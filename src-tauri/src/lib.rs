@@ -53,6 +53,7 @@ pub fn run() {
             commands::auth::login,
             commands::auth::logout,
             commands::games::list_games,
+            commands::games::get_game_stats,
             commands::launch::launch_game,
             commands::launch::stop_game,
             commands::launch::get_running_sessions,

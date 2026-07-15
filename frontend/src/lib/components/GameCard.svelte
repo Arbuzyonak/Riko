@@ -4,6 +4,7 @@
   import { navigate } from "../router.svelte";
   import { isRunning } from "../stores/session.svelte";
   import { formatPlaytime, playtimeState } from "../stores/playtime.svelte";
+  import { formatVisits, statsState } from "../stores/stats.svelte";
   import { toast } from "../stores/toast.svelte";
 
   let { game }: { game: Game } = $props();
@@ -11,6 +12,7 @@
   const hue = $derived((game.id * 137) % 360);
   const running = $derived(isRunning(game.id));
   const playtime = $derived(playtimeState.entries[game.id]?.total_secs ?? 0);
+  const stats = $derived(statsState.entries[game.id]);
   let thumbBroken = $state(false);
 
   async function play(event: MouseEvent) {
@@ -66,6 +68,13 @@
       <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-ok"></span>
       Running
     </span>
+  {:else if stats && stats.active > 0}
+    <span
+      class="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-ok backdrop-blur"
+    >
+      <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
+      {stats.active} playing
+    </span>
   {/if}
   <div class="flex flex-col gap-0.5 px-4 py-3">
     <span class="truncate font-medium text-white">{game.name}</span>
@@ -75,5 +84,10 @@
         <span class="shrink-0 tabular-nums">{formatPlaytime(playtime)}</span>
       {/if}
     </span>
+    {#if stats}
+      <span class="text-xs text-zinc-600 tabular-nums">
+        {formatVisits(stats.visits)} {stats.visits === 1 ? "visit" : "visits"}
+      </span>
+    {/if}
   </div>
 </div>

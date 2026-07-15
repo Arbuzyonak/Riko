@@ -16,6 +16,7 @@ pub struct ConfigView {
     pub use_fsync: bool,
     pub use_gamemode: bool,
     pub shader_cache: bool,
+    pub minimize_while_playing: bool,
     pub presence_enabled: bool,
     pub wine_prefix: String,
     pub vortex_exe: String,
@@ -32,6 +33,7 @@ pub struct ConfigPatch {
     pub use_fsync: Option<bool>,
     pub use_gamemode: Option<bool>,
     pub shader_cache: Option<bool>,
+    pub minimize_while_playing: Option<bool>,
     pub presence_enabled: Option<bool>,
 }
 
@@ -47,6 +49,7 @@ fn view(cfg: &riko_core::Config) -> ConfigView {
         use_fsync: cfg.launcher.use_fsync,
         use_gamemode: cfg.launcher.use_gamemode,
         shader_cache: cfg.launcher.shader_cache,
+        minimize_while_playing: cfg.launcher.minimize_while_playing,
         presence_enabled: cfg.presence.enabled,
         wine_prefix: cfg.paths.wine_prefix.display().to_string(),
         vortex_exe: cfg.paths.vortex_exe.display().to_string(),
@@ -89,6 +92,9 @@ pub async fn update_config(
     }
     if let Some(v) = patch.shader_cache {
         cfg.launcher.shader_cache = v;
+    }
+    if let Some(v) = patch.minimize_while_playing {
+        cfg.launcher.minimize_while_playing = v;
     }
     if let Some(v) = patch.presence_enabled {
         cfg.presence.enabled = v;

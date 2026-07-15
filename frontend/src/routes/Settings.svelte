@@ -1,16 +1,22 @@
 <script lang="ts">
   import {
     getConfig,
+    installWineVersion,
     listAccounts,
+    listWineVersions,
     logout,
     removeAccount,
+    removeWineVersion,
     switchAccount,
     updateConfig,
     uninstallRiko,
     type AccountView,
     type ConfigPatch,
     type ConfigView,
+    type WineVersions,
   } from "../lib/api";
+  import { progressState, resetProgress } from "../lib/stores/progress.svelte";
+  import ProgressBar from "../lib/components/ProgressBar.svelte";
   import { navigate } from "../lib/router.svelte";
   import { appState, refreshStatus } from "../lib/stores/app.svelte";
   import { toast } from "../lib/stores/toast.svelte";
@@ -24,6 +30,11 @@
   let envRows = $state<{ key: string; value: string }[]>([]);
   let confirmUninstall = $state(false);
   let uninstallBusy = $state(false);
+  let wine = $state<WineVersions | null>(null);
+  let wineBusy = $state<string | null>(null);
+  let showAvailableWine = $state(false);
+
+  const wineStage = $derived(progressState.stages["wine-install"]);
 
   $effect(() => {
     if (cfg === null) load();
@@ -34,6 +45,41 @@
     accounts = await listAccounts();
     wineBinary = cfg.wine_binary;
     envRows = Object.entries(cfg.wine_env).map(([key, value]) => ({ key, value }));
+    listWineVersions()
+      .then((w) => (wine = w))
+      .catch(() => {});
+  }
+
+  async function installWine(url: string, name: string) {
+    wineBusy = name;
+    resetProgress();
+    try {
+      const installed = await installWineVersion(url);
+      toast(`${installed.name} installed`, "success");
+      wine = await listWineVersions();
+    } catch (e) {
+      toast(String(e), "error");
+    } finally {
+      wineBusy = null;
+    }
+  }
+
+  async function useWine(binary: string) {
+    await patch({ wine_binary: binary });
+    wineBinary = binary;
+    if (wine) wine.active_binary = binary;
+    toast("Wine binary updated", "success");
+  }
+
+  async function removeWine(name: string) {
+    try {
+      await removeWineVersion(name);
+      cfg = await getConfig();
+      wineBinary = cfg.wine_binary;
+      wine = await listWineVersions();
+    } catch (e) {
+      toast(String(e), "error");
+    }
   }
 
   async function handleSwitch(username: string) {
@@ -289,6 +335,84 @@
           </button>
         </div>
       </div>
+    </section>
+
+    <section class="flex flex-col gap-3 rounded-xl border border-edge bg-panel px-5 py-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+          Wine builds
+        </h2>
+        <button
+          class="rounded-lg border border-edge px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-panel-hover"
+          onclick={() => (showAvailableWine = !showAvailableWine)}
+        >
+          {showAvailableWine ? "Hide catalog" : "Browse builds"}
+        </button>
+      </div>
+
+      {#each wine?.installed ?? [] as build (build.name)}
+        <div class="flex items-center justify-between border-t border-edge/60 py-2 first:border-t-0">
+          <div>
+            <p class="text-sm text-zinc-200">{build.name}</p>
+            {#if wine?.active_binary === build.wine_binary}
+              <p class="text-xs text-ok">Active</p>
+            {/if}
+          </div>
+          <div class="flex items-center gap-3">
+            {#if wine?.active_binary !== build.wine_binary}
+              <button
+                class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover"
+                onclick={() => useWine(build.wine_binary)}
+              >
+                Use
+              </button>
+            {:else}
+              <button
+                class="rounded-lg border border-edge px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-panel-hover"
+                onclick={() => useWine("wine")}
+              >
+                Use system wine
+              </button>
+            {/if}
+            <button
+              class="text-xs text-zinc-500 transition-colors hover:text-danger"
+              onclick={() => removeWine(build.name)}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      {:else}
+        <p class="text-sm text-zinc-500">
+          No downloaded builds; using <code class="text-zinc-400">{cfg.wine_binary}</code>.
+        </p>
+      {/each}
+
+      {#if wineBusy && wineStage && !wineStage.finished}
+        <ProgressBar done={wineStage.done} total={wineStage.total} />
+      {/if}
+
+      {#if showAvailableWine}
+        <div class="flex flex-col divide-y divide-edge/60 rounded-lg border border-edge/60 px-3">
+          {#each (wine?.available ?? []).filter((a) => !wine?.installed.some((b) => b.name === a.name)) as build (build.name)}
+            <div class="flex items-center justify-between py-2">
+              <div>
+                <p class="text-sm text-zinc-200">{build.name}</p>
+                <p class="text-xs text-zinc-500">{build.size_mb} MB</p>
+              </div>
+              <button
+                class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+                disabled={wineBusy !== null}
+                onclick={() => installWine(build.download_url, build.name)}
+              >
+                {wineBusy === build.name ? "Installing…" : "Install"}
+              </button>
+            </div>
+          {:else}
+            <p class="py-2 text-sm text-zinc-500">Could not load the build catalog.</p>
+          {/each}
+        </div>
+      {/if}
     </section>
 
     <section class="flex flex-col gap-1 rounded-xl border border-edge bg-panel px-5 py-4">

@@ -106,6 +106,9 @@ pub fn run() {
             commands::doctor::apply_fix,
             commands::playtime::get_playtime,
             commands::playtime::get_sessions,
+            commands::wine::list_wine_versions,
+            commands::wine::install_wine_version,
+            commands::wine::remove_wine_version,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

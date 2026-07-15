@@ -67,7 +67,12 @@ let initialized = false;
 export async function initProgressEvents() {
   if (initialized) return;
   initialized = true;
-  for (const channel of ["setup://progress", "plugin://progress", "update://progress"]) {
+  for (const channel of [
+    "setup://progress",
+    "plugin://progress",
+    "update://progress",
+    "wine://progress",
+  ]) {
     await listen<ProgressEvent>(channel, ({ payload }) => apply(payload));
   }
 }

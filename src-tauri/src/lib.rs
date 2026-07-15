@@ -20,6 +20,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::initialize())
         .setup(|app| {
             #[cfg(any(target_os = "linux", windows))]
@@ -60,6 +61,12 @@ pub fn run() {
             commands::setup::uninstall_riko,
             commands::settings::get_config,
             commands::settings::update_config,
+            commands::plugins::list_plugins,
+            commands::plugins::install_plugin,
+            commands::plugins::import_plugin,
+            commands::plugins::remove_plugin,
+            commands::plugins::set_plugin_enabled,
+            commands::plugins::get_game_plugin_overrides,
         ])
         .run(tauri::generate_context!())
         .expect("error while running riko-launcher");

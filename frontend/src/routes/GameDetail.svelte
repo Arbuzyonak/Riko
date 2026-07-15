@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { launchGame, stopGame } from "../lib/api";
+  import {
+    getGamePluginOverrides,
+    launchGame,
+    listPlugins,
+    setPluginEnabled,
+    stopGame,
+    type PerGamePlugins,
+    type PluginInfo,
+  } from "../lib/api";
   import { navigate, routeParam } from "../lib/router.svelte";
   import { gamesState, loadGames } from "../lib/stores/games.svelte";
   import { sessionState, isRunning } from "../lib/stores/session.svelte";
@@ -14,10 +22,51 @@
 
   let busy = $state(false);
   let showLogs = $state(false);
+  let plugins = $state<PluginInfo[]>([]);
+  let overrides = $state<PerGamePlugins>({ enabled: [], disabled: [] });
+  let pluginsLoadedFor = $state(0);
+
+  const usablePlugins = $derived(
+    plugins.filter((p) => p.installed && p.built && p.supported)
+  );
+
+  type PluginMode = "inherit" | "on" | "off";
+
+  function modeOf(name: string): PluginMode {
+    if (overrides.enabled.includes(name)) return "on";
+    if (overrides.disabled.includes(name)) return "off";
+    return "inherit";
+  }
+
+  async function loadPlugins() {
+    try {
+      plugins = await listPlugins();
+      overrides = await getGamePluginOverrides(gameId);
+    } catch (e) {
+      toast(String(e), "error");
+    }
+  }
+
+  async function setMode(name: string, mode: PluginMode) {
+    const enabled = mode === "on" ? true : mode === "off" ? false : null;
+    try {
+      await setPluginEnabled(name, gameId, enabled);
+      overrides = await getGamePluginOverrides(gameId);
+    } catch (e) {
+      toast(String(e), "error");
+    }
+  }
 
   $effect(() => {
     if (!gamesState.loaded && !gamesState.loading) {
       loadGames(false);
+    }
+  });
+
+  $effect(() => {
+    if (gameId && pluginsLoadedFor !== gameId) {
+      pluginsLoadedFor = gameId;
+      loadPlugins();
     }
   });
 
@@ -111,6 +160,41 @@
   <div class="flex flex-col gap-6 p-8">
     {#if game?.description}
       <p class="max-w-2xl text-sm leading-relaxed text-zinc-400">{game.description}</p>
+    {/if}
+
+    {#if usablePlugins.length > 0}
+      <div class="flex max-w-2xl flex-col gap-3">
+        <h2 class="text-sm font-medium text-zinc-200">Plugins for this game</h2>
+        <div class="flex flex-col divide-y divide-edge rounded-xl border border-edge bg-panel px-5">
+          {#each usablePlugins as plugin (plugin.name)}
+            {@const mode = modeOf(plugin.name)}
+            <div class="flex items-center justify-between gap-4 py-3">
+              <div class="min-w-0">
+                <span class="text-sm text-zinc-200">{plugin.name}</span>
+                <p class="text-xs text-zinc-500">
+                  {mode === "inherit"
+                    ? `Following global setting (${plugin.enabled ? "on" : "off"})`
+                    : mode === "on"
+                      ? "Forced on for this game"
+                      : "Forced off for this game"}
+                </p>
+              </div>
+              <div class="flex shrink-0 overflow-hidden rounded-lg border border-edge text-xs">
+                {#each ["inherit", "on", "off"] as const as option (option)}
+                  <button
+                    class="px-3 py-1.5 capitalize transition-colors {mode === option
+                      ? 'bg-accent text-white'
+                      : 'text-zinc-400 hover:bg-panel-hover'}"
+                    onclick={() => setMode(plugin.name, option)}
+                  >
+                    {option}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
     {/if}
 
     <div class="flex flex-col gap-2">

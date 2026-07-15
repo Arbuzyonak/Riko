@@ -1,0 +1,17 @@
+[plugin]
+name = "fps-unlocker"
+version = "0.1.0"
+description = "Unlocks the frame rate by forcing VK_PRESENT_MODE_IMMEDIATE_KHR through a Vulkan implicit layer"
+type = "vulkan-layer"
+platforms = ["linux"]
+
+[build]
+command = "cc -I${VULKAN_INCLUDE:-/usr/include} -shared -fPIC -O2 -fvisibility=hidden -Wall -Wextra -o libVkLayer_vortstrap_present_mode.so present_mode_layer.c"
+artifacts = ["libVkLayer_vortstrap_present_mode.so", "VkLayer_vortstrap_present_mode.json"]
+
+[env]
+VORTSTRAP_FORCE_PRESENT = "1"
+VORTSTRAP_PRESENT_MODE = { default = "0" }
+
+[vulkan_layer]
+manifest = "VkLayer_vortstrap_present_mode.json"

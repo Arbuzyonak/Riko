@@ -79,6 +79,22 @@ pub fn receiver_running() -> bool {
         .unwrap_or(false)
 }
 
+pub fn game_process_running() -> bool {
+    Command::new("tasklist")
+        .args(["/FI", "IMAGENAME eq Vortex.exe", "/NH"])
+        .output()
+        .map(|out| String::from_utf8_lossy(&out.stdout).contains("Vortex.exe"))
+        .unwrap_or(false)
+}
+
+pub fn kill_game_processes(cfg: &Config) {
+    Command::new("taskkill")
+        .args(["/F", "/IM", "Vortex.exe"])
+        .status()
+        .ok();
+    let _ = cfg;
+}
+
 pub fn setup_plan(cfg: &Config) -> SetupPlan {
     let status = |done: bool| if done { StepStatus::Done } else { StepStatus::Needed };
     SetupPlan {

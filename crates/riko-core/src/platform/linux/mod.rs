@@ -134,6 +134,26 @@ pub fn receiver_running() -> bool {
         .unwrap_or(false)
 }
 
+pub fn game_process_running() -> bool {
+    Command::new("pgrep")
+        .args(["-f", "Vortex\\.exe"])
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false)
+}
+
+pub fn kill_game_processes(cfg: &Config) {
+    Command::new("wineserver")
+        .env("WINEPREFIX", &cfg.paths.wine_prefix)
+        .arg("-k")
+        .status()
+        .ok();
+    Command::new("pkill")
+        .args(["-f", "Vortex\\.exe"])
+        .status()
+        .ok();
+}
+
 pub(crate) fn is_root() -> bool {
     unsafe { libc::getuid() == 0 }
 }

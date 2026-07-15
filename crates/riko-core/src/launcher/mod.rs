@@ -135,7 +135,7 @@ pub async fn launch(
     for sidecar in sidecars {
         tokio::spawn(async move {
             tokio::time::sleep(std::time::Duration::from_secs(sidecar.delay_secs)).await;
-            match tokio::process::Command::new(&sidecar.path)
+            match sidecar_command(&sidecar)
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()
@@ -202,6 +202,24 @@ pub async fn launch(
         session,
         kill: kill_tx,
     })
+}
+
+fn sidecar_command(sidecar: &crate::plugin::Sidecar) -> tokio::process::Command {
+    #[cfg(unix)]
+    if sidecar.sandbox && which::which("bwrap").is_ok() {
+        let plugin_dir = sidecar.path.parent().unwrap_or_else(|| std::path::Path::new("/"));
+        let data_dir = crate::Config::data_dir();
+        let mut cmd = tokio::process::Command::new("bwrap");
+        cmd.args(["--ro-bind", "/", "/"]);
+        cmd.arg("--bind").arg(plugin_dir).arg(plugin_dir);
+        if data_dir.exists() {
+            cmd.arg("--bind").arg(&data_dir).arg(&data_dir);
+        }
+        cmd.args(["--dev", "/dev", "--proc", "/proc", "--die-with-parent"]);
+        cmd.arg(&sidecar.path);
+        return cmd;
+    }
+    tokio::process::Command::new(&sidecar.path)
 }
 
 #[cfg(unix)]

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { listen } from "@tauri-apps/api/event";
   import { router, navigate } from "./lib/router.svelte";
   import { appState, refreshStatus } from "./lib/stores/app.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
@@ -19,6 +20,9 @@
   onMount(async () => {
     await initSessionEvents();
     await initProgressEvents();
+    await listen("vortex://updated", () =>
+      toast("Vortex client updated to the latest version", "success")
+    );
     await refreshStatus();
     if (appState.status?.migrated_from_tempest) {
       toast("Imported your existing tempest configuration", "success");

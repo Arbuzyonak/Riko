@@ -5,6 +5,10 @@ description = "In-game FPS, frametime, CPU and GPU overlay via MangoHud (require
 type = "env-only"
 platforms = ["linux"]
 
+[requires]
+command = "mangohud"
+hint = "sudo pacman -S mangohud lib32-mangohud"
+
 [env]
 MANGOHUD = "1"
 MANGOHUD_CONFIG = { default = "fps,frametime,cpu_stats,gpu_stats,ram,position=top-left" }

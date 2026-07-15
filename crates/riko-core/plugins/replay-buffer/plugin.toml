@@ -5,6 +5,10 @@ description = "Rolling 60-second replay buffer via gpu-screen-recorder; save a c
 type = "binary"
 platforms = ["linux"]
 
+[requires]
+command = "gpu-screen-recorder"
+hint = "sudo pacman -S gpu-screen-recorder"
+
 [binary]
 entrypoint = "replay.sh"
 run_after_launch = true

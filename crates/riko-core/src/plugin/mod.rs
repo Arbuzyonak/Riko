@@ -36,6 +36,7 @@ pub struct PluginInfo {
     pub enabled: bool,
     pub supported: bool,
     pub build_command: Option<String>,
+    pub missing_requirement: Option<String>,
 }
 
 pub fn plugins_dir() -> PathBuf {
@@ -59,6 +60,9 @@ fn info_from(cfg: &Config, m: &PluginManifest, dir: Option<&Path>) -> PluginInfo
         installed: dir.is_some(),
         built,
         supported: manifest::supported_on_current_platform(m),
+        missing_requirement: builtin::manifest_for(&name)
+            .map(|embedded| manifest::missing_requirement(&embedded))
+            .unwrap_or_else(|| manifest::missing_requirement(m)),
         version: m.plugin.version.clone(),
         description: m.plugin.description.clone(),
         kind: m.plugin.kind,

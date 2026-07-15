@@ -117,6 +117,7 @@ export interface PluginInfo {
   enabled: boolean;
   supported: boolean;
   build_command: string | null;
+  missing_requirement: string | null;
 }
 
 export const listPlugins = () => invoke<PluginInfo[]>("list_plugins");

@@ -78,6 +78,8 @@ pub struct BinarySpec {
     pub run_after_launch: bool,
     #[serde(default)]
     pub delay_secs: u64,
+    #[serde(default)]
+    pub sandbox: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

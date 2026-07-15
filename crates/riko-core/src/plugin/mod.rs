@@ -21,6 +21,7 @@ pub struct ResolvedPluginEnv {
 pub struct Sidecar {
     pub path: PathBuf,
     pub delay_secs: u64,
+    pub sandbox: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -260,6 +261,7 @@ fn apply_manifest(resolved: &mut ResolvedPluginEnv, m: &PluginManifest, dir: &Pa
             resolved.sidecars.push(Sidecar {
                 path,
                 delay_secs: binary.delay_secs,
+                sandbox: binary.sandbox,
             });
         }
     }

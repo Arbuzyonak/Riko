@@ -157,6 +157,9 @@ export const switchAccount = (username: string) =>
 export const removeAccount = (username: string) =>
   invoke<AccountView[]>("remove_account", { username });
 
+export const createShortcut = (gameId: number) =>
+  invoke<string>("create_shortcut", { gameId });
+
 export interface Friend {
   id: number;
   username: string;

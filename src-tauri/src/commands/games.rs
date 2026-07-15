@@ -20,6 +20,16 @@ pub async fn list_games(state: State<'_, AppState>, refresh: bool) -> Result<Vec
 }
 
 #[tauri::command]
+pub async fn create_shortcut(game_id: u32) -> Result<String, RikoError> {
+    let game = riko_core::games::load_cached()
+        .into_iter()
+        .find(|g| g.id == game_id)
+        .ok_or_else(|| RikoError::Other(format!("game {game_id} is not in the library cache")))?;
+    let path = riko_core::shortcuts::create_for_game(&game).await?;
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
 pub async fn get_game_stats(
     state: State<'_, AppState>,
 ) -> Result<HashMap<u32, GameStats>, RikoError> {

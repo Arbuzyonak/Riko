@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    createShortcut,
     getGamePluginOverrides,
     launchGame,
     listAccounts,
@@ -109,6 +110,15 @@
       toast(String(e), "error");
     } finally {
       busy = false;
+    }
+  }
+
+  async function addShortcut() {
+    try {
+      await createShortcut(gameId);
+      toast("Shortcut added to your app menu", "success");
+    } catch (e) {
+      toast(String(e), "error");
     }
   }
 </script>
@@ -237,6 +247,20 @@
     {#if game?.description}
       <p class="max-w-2xl text-sm leading-relaxed text-zinc-400">{game.description}</p>
     {/if}
+
+    <button
+      class="flex w-fit items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
+      onclick={addShortcut}
+    >
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+        />
+      </svg>
+      Create desktop shortcut
+    </button>
 
     {#if usablePlugins.length > 0}
       <div class="flex max-w-2xl flex-col gap-3">

@@ -6,10 +6,14 @@ use crate::setup::{PlannedStep, SetupPlan, SetupStep, StepStatus};
 use crate::RikoError;
 use std::path::Path;
 use std::process::Command;
-use winreg::enums::HKEY_CURRENT_USER;
+use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 use winreg::RegKey;
 
 const PROTOCOL_KEY: &str = r"Software\Classes\vortex";
+const WEBVIEW2_CLIENT: &str =
+    r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+const WEBVIEW2_CLIENT_64: &str =
+    r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
 
 pub fn register_uri() -> Result<(), RikoError> {
     let exe = std::env::current_exe()?;
@@ -118,8 +122,39 @@ pub async fn execute_setup_step(
     }
 }
 
+fn webview2_installed() -> bool {
+    [
+        (HKEY_LOCAL_MACHINE, WEBVIEW2_CLIENT),
+        (HKEY_LOCAL_MACHINE, WEBVIEW2_CLIENT_64),
+        (HKEY_CURRENT_USER, WEBVIEW2_CLIENT),
+        (HKEY_CURRENT_USER, WEBVIEW2_CLIENT_64),
+    ]
+    .iter()
+    .any(|(hive, path)| {
+        RegKey::predef(*hive)
+            .open_subkey(path)
+            .and_then(|key| key.get_value::<String, _>("pv"))
+            .map(|version| !version.is_empty() && version != "0.0.0.0")
+            .unwrap_or(false)
+    })
+}
+
 pub fn doctor_checks(cfg: &Config) -> Vec<CheckResult> {
     let mut checks = vec![];
+
+    if webview2_installed() {
+        checks.push(CheckResult::pass("webview2", "WebView2 runtime", "installed"));
+    } else {
+        checks.push(CheckResult::fail(
+            "webview2",
+            "WebView2 runtime",
+            "not found in registry",
+            FixAction::command(
+                "Copy install command",
+                "winget install Microsoft.EdgeWebView2Runtime",
+            ),
+        ));
+    }
 
     if uri_handler_registered() {
         checks.push(CheckResult::pass("uri-handler", "URI handler", "registered"));

@@ -49,7 +49,14 @@
     {:else}
       <span class="text-4xl font-bold text-white/25">{game.name.slice(0, 1)}</span>
     {/if}
-    {#if !running}
+    {#if running}
+      <span
+        class="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ok/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg"
+      >
+        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-white"></span>
+        Playing
+      </span>
+    {:else}
       <button
         class="absolute right-3 bottom-3 flex h-10 w-10 items-center justify-center rounded-full bg-accent text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-accent-hover"
         onclick={play}
@@ -66,7 +73,7 @@
       class="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-ok backdrop-blur"
     >
       <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-ok"></span>
-      Running
+      Playing
     </span>
   {:else if stats && stats.active > 0}
     <span

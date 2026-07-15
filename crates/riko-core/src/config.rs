@@ -54,12 +54,8 @@ pub struct LauncherConfig {
     pub use_fsync: bool,
     pub use_gamemode: bool,
     pub shader_cache: bool,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub minimize_while_playing: bool,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -112,7 +108,7 @@ impl Default for LauncherConfig {
             use_fsync: true,
             use_gamemode: false,
             shader_cache: true,
-            minimize_while_playing: true,
+            minimize_while_playing: false,
         }
     }
 }

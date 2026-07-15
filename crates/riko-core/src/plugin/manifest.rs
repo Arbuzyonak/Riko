@@ -16,6 +16,18 @@ pub struct PluginManifest {
     pub binary: Option<BinarySpec>,
     #[serde(default)]
     pub env_append: HashMap<String, EnvAppend>,
+    #[serde(default)]
+    pub requires: Option<RequiresSpec>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RequiresSpec {
+    #[serde(default)]
+    pub command: Option<String>,
+    #[serde(default)]
+    pub any_file: Vec<String>,
+    #[serde(default)]
+    pub hint: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -137,6 +149,32 @@ fn validate(manifest: &PluginManifest) -> Result<(), RikoError> {
         )),
         _ => Ok(()),
     }
+}
+
+pub fn missing_requirement(manifest: &PluginManifest) -> Option<String> {
+    let requires = manifest.requires.as_ref()?;
+    if let Some(command) = &requires.command
+        && which::which(command).is_ok()
+    {
+        return None;
+    }
+    for file in &requires.any_file {
+        let path = if let Some(rest) = file.strip_prefix("~/") {
+            dirs::home_dir().map(|h| h.join(rest))
+        } else {
+            Some(std::path::PathBuf::from(file))
+        };
+        if path.is_some_and(|p| p.exists()) {
+            return None;
+        }
+    }
+    Some(requires.hint.clone().unwrap_or_else(|| {
+        requires
+            .command
+            .clone()
+            .map(|c| format!("requires '{c}' installed on your system"))
+            .unwrap_or_else(|| "a required system component is missing".to_string())
+    }))
 }
 
 pub fn supported_on_current_platform(manifest: &PluginManifest) -> bool {

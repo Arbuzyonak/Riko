@@ -5,6 +5,13 @@ description = "Contrast-adaptive sharpening via vkBasalt; toggle in-game with Ho
 type = "env-only"
 platforms = ["linux"]
 
+[requires]
+any_file = [
+    "/usr/share/vulkan/implicit_layer.d/vkBasalt.json",
+    "~/.local/share/vulkan/implicit_layer.d/vkBasalt.json",
+]
+hint = "sudo pacman -S vkbasalt lib32-vkbasalt"
+
 [env]
 ENABLE_VKBASALT = "1"
 VKBASALT_CONFIG_FILE = "${PLUGIN_DIR}/vkBasalt.conf"

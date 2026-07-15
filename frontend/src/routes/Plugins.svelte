@@ -118,6 +118,16 @@
             {#if plugin.installed && !plugin.built}
               <p class="mt-1 text-xs text-warn">Imported but not built yet.</p>
             {/if}
+            {#if plugin.missing_requirement}
+              <div class="mt-1.5 flex items-center gap-2 text-xs text-warn">
+                <span>Won't take effect — missing system package. Install it with:</span>
+                <code
+                  class="rounded bg-black/40 px-2 py-0.5 font-mono text-zinc-300 select-text"
+                >
+                  {plugin.missing_requirement}
+                </code>
+              </div>
+            {/if}
           </div>
           <div class="flex shrink-0 items-center gap-3">
             {#if plugin.installed && plugin.built}

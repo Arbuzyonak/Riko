@@ -24,3 +24,18 @@ export const logout = () => invoke<void>("logout");
 
 export const listGames = (refresh: boolean) =>
   invoke<Game[]>("list_games", { refresh });
+
+export interface GameSession {
+  game_id: number;
+  pid: number;
+  started_at: string;
+}
+
+export const launchGame = (gameId: number) =>
+  invoke<number>("launch_game", { gameId });
+
+export const stopGame = (gameId: number) =>
+  invoke<void>("stop_game", { gameId });
+
+export const getRunningSessions = () =>
+  invoke<GameSession[]>("get_running_sessions");

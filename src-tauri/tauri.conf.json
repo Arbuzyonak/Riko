@@ -9,6 +9,13 @@
     "beforeBuildCommand": "npm run build --prefix ../frontend",
     "frontendDist": "../frontend/dist"
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["vortex"]
+      }
+    }
+  },
   "app": {
     "windows": [
       {

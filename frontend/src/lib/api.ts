@@ -157,6 +157,15 @@ export const switchAccount = (username: string) =>
 export const removeAccount = (username: string) =>
   invoke<AccountView[]>("remove_account", { username });
 
+export interface Friend {
+  id: number;
+  username: string;
+  online_status: "in_game" | "online" | "offline" | string;
+  avatar: string | null;
+}
+
+export const getFriends = () => invoke<Friend[]>("get_friends");
+
 export interface GameStats {
   visits: number;
   active: number;

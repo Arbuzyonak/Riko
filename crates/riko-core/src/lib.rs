@@ -3,6 +3,7 @@ pub mod config;
 pub mod crypto;
 pub mod doctor;
 pub mod error;
+pub mod friends;
 pub mod games;
 pub mod launcher;
 pub mod logger;

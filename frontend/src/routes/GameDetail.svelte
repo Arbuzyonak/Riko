@@ -24,6 +24,7 @@
 
   let busy = $state(false);
   let showLogs = $state(false);
+  let heroBroken = $state(false);
   let plugins = $state<PluginInfo[]>([]);
   let overrides = $state<PerGamePlugins>({ enabled: [], disabled: [] });
   let pluginsLoadedFor = $state(0);
@@ -106,11 +107,12 @@
     style="background: linear-gradient(160deg, hsl({hue}, 45%, 24%), hsl({(hue + 40) %
       360}, 50%, 10%) 70%)"
   >
-    {#if game?.thumbnail_url}
+    {#if game?.thumbnail_url && !heroBroken}
       <img
         src={game.thumbnail_url}
         alt=""
         class="absolute inset-0 h-full w-full object-cover opacity-30 blur-sm"
+        onerror={() => (heroBroken = true)}
       />
     {/if}
     <button

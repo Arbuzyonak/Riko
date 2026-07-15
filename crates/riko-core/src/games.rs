@@ -2,8 +2,6 @@ use crate::config::Config;
 use crate::{RikoError, VORTEX_BASE};
 use serde::{Deserialize, Serialize};
 
-const DISCOVERY_WINDOW: u32 = 5;
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Game {
     pub id: u32,
@@ -15,53 +13,30 @@ pub struct Game {
 
 pub async fn fetch_all(token: &str) -> Result<Vec<Game>, RikoError> {
     let client = reqwest::Client::new();
-    let mut games = Vec::new();
-    let mut start = 1u32;
-    loop {
-        let ids: Vec<u32> = (start..start + DISCOVERY_WINDOW).collect();
-        let results = futures_util::future::join_all(
-            ids.iter().map(|id| fetch_game(&client, token, *id)),
-        )
-        .await;
-        let mut done = false;
-        for result in results {
-            match result? {
-                Some(game) => games.push(game),
-                None => {
-                    done = true;
-                    break;
-                }
-            }
-        }
-        if done {
-            break;
-        }
-        start += DISCOVERY_WINDOW;
+    let resp = client
+        .get(format!("{VORTEX_BASE}/api/games"))
+        .header("Cookie", format!("session_token={token}"))
+        .send()
+        .await?
+        .error_for_status()?;
+    let body: Vec<serde_json::Value> = resp.json().await?;
+    let games: Vec<Game> = body.iter().filter_map(parse_game).collect();
+    if games.is_empty() {
+        return Err(RikoError::Other(
+            "the games API returned no recognizable games; the site may have changed".to_string(),
+        ));
     }
     save_cache(&games);
     Ok(games)
 }
 
-async fn fetch_game(
-    client: &reqwest::Client,
-    token: &str,
-    id: u32,
-) -> Result<Option<Game>, RikoError> {
-    let resp = client
-        .get(format!("{VORTEX_BASE}/api/games/{id}"))
-        .header("Cookie", format!("session_token={token}"))
-        .send()
-        .await?;
-
-    if !resp.status().is_success() {
-        return Ok(None);
-    }
-
-    let body: serde_json::Value = resp.json().await?;
-    let name = match body.get("name").and_then(|v| v.as_str()) {
-        Some(n) if !n.is_empty() => n.to_string(),
-        _ => return Ok(None),
-    };
+fn parse_game(body: &serde_json::Value) -> Option<Game> {
+    let id = u32::try_from(body.get("id")?.as_u64()?).ok()?;
+    let name = body
+        .get("name")?
+        .as_str()
+        .filter(|n| !n.is_empty())?
+        .to_string();
 
     let string_field = |keys: &[&str]| {
         keys.iter().find_map(|k| {
@@ -72,22 +47,18 @@ async fn fetch_game(
         })
     };
 
-    let creator = body
-        .get("creator")
-        .and_then(|c| {
-            c.as_str()
-                .map(str::to_string)
-                .or_else(|| c.get("username").and_then(|u| u.as_str()).map(str::to_string))
-        })
-        .filter(|s| !s.is_empty());
+    let thumbnail_url = Some(match string_field(&["thumbnail_version"]) {
+        Some(version) => format!("{VORTEX_BASE}/assets/thumbnails/{id}.png?v={version}"),
+        None => format!("{VORTEX_BASE}/assets/thumbnails/{id}.png"),
+    });
 
-    Ok(Some(Game {
+    Some(Game {
         id,
         name,
         description: string_field(&["description"]),
-        thumbnail_url: string_field(&["thumbnail_url", "thumbnail", "icon_url", "image_url"]),
-        creator,
-    }))
+        thumbnail_url,
+        creator: string_field(&["creator_name", "creator"]),
+    })
 }
 
 fn cache_path() -> std::path::PathBuf {
@@ -111,5 +82,42 @@ fn save_cache(games: &[Game]) {
         if std::fs::write(&tmp, json).is_ok() {
             std::fs::rename(&tmp, &path).ok();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_live_api_shape() {
+        let body: serde_json::Value = serde_json::from_str(
+            r#"{"id":3,"name":"Snowy Peak","description":"it's really chilly up here","creator_id":2,"creator_name":"kostas","thumbnail_version":"afc5ffe7"}"#,
+        )
+        .unwrap();
+        let game = parse_game(&body).unwrap();
+        assert_eq!(game.id, 3);
+        assert_eq!(game.name, "Snowy Peak");
+        assert_eq!(game.creator.as_deref(), Some("kostas"));
+        assert_eq!(
+            game.thumbnail_url.as_deref(),
+            Some("https://playvortex.io/assets/thumbnails/3.png?v=afc5ffe7")
+        );
+    }
+
+    #[test]
+    fn skips_entries_without_name_or_id() {
+        assert!(parse_game(&serde_json::json!({"id": 5})).is_none());
+        assert!(parse_game(&serde_json::json!({"name": "x"})).is_none());
+        assert!(parse_game(&serde_json::json!({"id": 5, "name": ""})).is_none());
+    }
+
+    #[test]
+    fn thumbnail_without_version_omits_query() {
+        let game = parse_game(&serde_json::json!({"id": 7, "name": "n"})).unwrap();
+        assert_eq!(
+            game.thumbnail_url.as_deref(),
+            Some("https://playvortex.io/assets/thumbnails/7.png")
+        );
     }
 }

@@ -10,6 +10,7 @@
   } from "../lib/api";
   import { navigate, routeParam } from "../lib/router.svelte";
   import { gamesState, loadGames } from "../lib/stores/games.svelte";
+  import { formatPlaytime, loadPlaytime, playtimeState } from "../lib/stores/playtime.svelte";
   import { sessionState, isRunning } from "../lib/stores/session.svelte";
   import { toast } from "../lib/stores/toast.svelte";
   import LogViewer from "../lib/components/LogViewer.svelte";
@@ -19,6 +20,7 @@
   const running = $derived(isRunning(gameId));
   const logs = $derived(sessionState.logs[gameId] ?? []);
   const hue = $derived((gameId * 137) % 360);
+  const playtime = $derived(playtimeState.entries[gameId]);
 
   let busy = $state(false);
   let showLogs = $state(false);
@@ -72,6 +74,7 @@
 
   $effect(() => {
     if (running) showLogs = true;
+    else loadPlaytime(true);
   });
 
   async function play() {
@@ -126,6 +129,12 @@
         </h1>
         <p class="mt-1 text-sm text-zinc-300">
           {game?.creator ? `by ${game.creator}` : `Game #${gameId}`}
+          {#if playtime && playtime.total_secs > 0}
+            <span class="ml-2 text-zinc-400">
+              {formatPlaytime(playtime.total_secs)} played · {playtime.launches}
+              {playtime.launches === 1 ? "launch" : "launches"}
+            </span>
+          {/if}
           {#if running}
             <span class="ml-2 inline-flex items-center gap-1.5 text-ok">
               <span class="h-2 w-2 animate-pulse rounded-full bg-ok"></span>

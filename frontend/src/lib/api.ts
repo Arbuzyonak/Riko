@@ -142,6 +142,15 @@ export interface PerGamePlugins {
 export const getGamePluginOverrides = (gameId: number) =>
   invoke<PerGamePlugins>("get_game_plugin_overrides", { gameId });
 
+export interface PlaytimeEntry {
+  total_secs: number;
+  last_played: string | null;
+  launches: number;
+}
+
+export const getPlaytime = () =>
+  invoke<Record<number, PlaytimeEntry>>("get_playtime");
+
 export type FixKind =
   | { kind: "command"; shell: string }
   | { kind: "run_setup" }

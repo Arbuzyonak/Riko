@@ -47,7 +47,7 @@ fn strip_v(tag: &str) -> &str {
 
 fn parts(version: &str) -> Vec<u64> {
     strip_v(version)
-        .split(|c: char| c == '.' || c == '-' || c == '+')
+        .split(['.', '-', '+'])
         .map(|p| p.chars().take_while(|c| c.is_ascii_digit()).collect::<String>())
         .map(|p| p.parse::<u64>().unwrap_or(0))
         .collect()

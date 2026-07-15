@@ -1,0 +1,16 @@
+{
+  "plugins": [
+    {
+      "name": "example-plugin",
+      "version": "1.0.0",
+      "description": "A template entry showing the catalog format. Remove this in a real catalog.",
+      "kind": "env-only",
+      "platforms": ["linux"],
+      "download_url": "https://github.com/OWNER/riko-plugins/releases/download/example-plugin-1.0.0/example-plugin.zip",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size_bytes": 0,
+      "author": "you",
+      "homepage": "https://github.com/OWNER/riko-plugins"
+    }
+  ]
+}

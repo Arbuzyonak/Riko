@@ -86,11 +86,11 @@ pub fn list(cfg: &Config) -> Vec<PluginInfo> {
             let Some(name) = entry.file_name().to_str().map(str::to_string) else {
                 continue;
             };
-            if let Some(m) = load_dir_manifest(&path, &name) {
-                if m.plugin.name == name {
-                    seen.push(name);
-                    infos.push(info_from(cfg, &m, Some(&path)));
-                }
+            if let Some(m) = load_dir_manifest(&path, &name)
+                && m.plugin.name == name
+            {
+                seen.push(name);
+                infos.push(info_from(cfg, &m, Some(&path)));
             }
         }
     }

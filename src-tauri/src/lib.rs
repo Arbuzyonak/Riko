@@ -102,6 +102,8 @@ pub fn run() {
             commands::plugins::remove_plugin,
             commands::plugins::set_plugin_enabled,
             commands::plugins::get_game_plugin_overrides,
+            commands::marketplace::list_marketplace,
+            commands::marketplace::install_marketplace_plugin,
             commands::doctor::run_doctor,
             commands::doctor::apply_fix,
             commands::playtime::get_playtime,

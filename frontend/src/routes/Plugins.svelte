@@ -6,7 +6,10 @@
     listPlugins,
     removePlugin,
     setPluginEnabled,
+    listMarketplace,
+    installMarketplacePlugin,
     type PluginInfo,
+    type MarketplaceEntry,
   } from "../lib/api";
   import { progressState, resetProgress } from "../lib/stores/progress.svelte";
   import { toast } from "../lib/stores/toast.svelte";
@@ -17,6 +20,40 @@
   let busyPlugin = $state<string | null>(null);
   let confirmInstall = $state<PluginInfo | null>(null);
   let confirmRemove = $state<PluginInfo | null>(null);
+
+  let market = $state<MarketplaceEntry[] | null>(null);
+  let marketError = $state<string | null>(null);
+  let marketLoading = $state(false);
+  let confirmMarket = $state<MarketplaceEntry | null>(null);
+
+  async function loadMarket() {
+    marketLoading = true;
+    marketError = null;
+    try {
+      market = await listMarketplace();
+    } catch (e) {
+      marketError = String(e);
+      market = [];
+    } finally {
+      marketLoading = false;
+    }
+  }
+
+  async function doMarketInstall(entry: MarketplaceEntry) {
+    confirmMarket = null;
+    busyPlugin = entry.name;
+    resetProgress();
+    try {
+      await installMarketplacePlugin(entry.name);
+      toast(`${entry.name} installed from the marketplace`, "success");
+    } catch (e) {
+      toast(String(e), "error");
+    } finally {
+      busyPlugin = null;
+      await refresh();
+      await loadMarket();
+    }
+  }
 
   const buildStage = $derived(progressState.stages["plugin"]);
 
@@ -180,6 +217,74 @@
       </div>
     {/each}
   </div>
+
+  <div class="mt-2 flex items-center justify-between border-t border-edge pt-6">
+    <div>
+      <h2 class="text-lg font-semibold tracking-tight text-white">Browse the marketplace</h2>
+      <p class="mt-1 text-sm text-zinc-500">
+        Community plugins from the shared catalog. Each download is verified against a
+        checksum before it's installed — but installing still runs its build command, so
+        only add plugins you trust.
+      </p>
+    </div>
+    <button
+      class="shrink-0 rounded-lg border border-edge bg-panel px-3.5 py-2 text-sm text-zinc-300 transition-colors hover:bg-panel-hover disabled:opacity-40"
+      onclick={loadMarket}
+      disabled={marketLoading}
+    >
+      {market === null ? "Browse" : "Refresh"}
+    </button>
+  </div>
+
+  {#if marketLoading}
+    <div class="flex justify-center py-6">
+      <div class="h-5 w-5 animate-spin rounded-full border-2 border-edge border-t-accent"></div>
+    </div>
+  {:else if marketError}
+    <p class="text-sm text-warn">Couldn't load the catalog: {marketError}</p>
+  {:else if market !== null}
+    {#if market.length === 0}
+      <p class="text-sm text-zinc-500">The catalog is empty right now.</p>
+    {:else}
+      <div class="flex flex-col gap-4">
+        {#each market as entry (entry.name)}
+          <div class="flex items-start justify-between gap-4 rounded-xl border border-edge bg-panel px-5 py-4">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="font-medium text-white">{entry.name}</h3>
+                <span class="text-xs text-zinc-500">v{entry.version}</span>
+                <span class="rounded bg-panel-hover px-1.5 py-0.5 text-[10px] text-zinc-400 uppercase">
+                  {entry.kind}
+                </span>
+                {#if entry.author}
+                  <span class="text-xs text-zinc-500">by {entry.author}</span>
+                {/if}
+              </div>
+              <p class="mt-1 text-sm text-zinc-400">{entry.description}</p>
+              <p class="mt-1 text-xs text-zinc-600">
+                {(entry.size_bytes / 1024).toFixed(0)} KB · sha256 verified on install
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-3">
+              {#if entry.installed}
+                <span class="text-xs text-zinc-500">Installed</span>
+              {:else if busyPlugin === entry.name}
+                <div class="h-5 w-5 animate-spin rounded-full border-2 border-edge border-t-accent"></div>
+              {:else}
+                <button
+                  class="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
+                  disabled={busyPlugin !== null}
+                  onclick={() => (confirmMarket = entry)}
+                >
+                  Install
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  {/if}
 </div>
 
 <Modal
@@ -236,6 +341,39 @@
       onclick={() => confirmRemove && doRemove(confirmRemove)}
     >
       Remove
+    </button>
+  </div>
+</Modal>
+
+<Modal
+  title="Install {confirmMarket?.name} from the marketplace?"
+  open={confirmMarket !== null}
+  onclose={() => (confirmMarket = null)}
+>
+  <p class="text-sm leading-relaxed text-zinc-400">
+    Riko will download this plugin, verify its checksum, then run its build command on
+    your machine. Source:
+  </p>
+  <code
+    class="mt-3 block rounded-lg bg-black/40 p-3 font-mono text-xs leading-relaxed break-all text-zinc-300 select-text"
+  >
+    {confirmMarket?.download_url}
+  </code>
+  <p class="mt-3 text-xs text-zinc-500">
+    Only continue if you trust this plugin's author.
+  </p>
+  <div class="mt-5 flex justify-end gap-3">
+    <button
+      class="rounded-lg border border-edge px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-panel-hover"
+      onclick={() => (confirmMarket = null)}
+    >
+      Cancel
+    </button>
+    <button
+      class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+      onclick={() => confirmMarket && doMarketInstall(confirmMarket)}
+    >
+      Install
     </button>
   </div>
 </Modal>

@@ -19,6 +19,7 @@ pub struct ConfigView {
     pub shader_cache: bool,
     pub minimize_while_playing: bool,
     pub presence_enabled: bool,
+    pub telemetry_enabled: bool,
     pub wine_prefix: String,
     pub vortex_exe: String,
     pub log_file: String,
@@ -36,6 +37,7 @@ pub struct ConfigPatch {
     pub shader_cache: Option<bool>,
     pub minimize_while_playing: Option<bool>,
     pub presence_enabled: Option<bool>,
+    pub telemetry_enabled: Option<bool>,
 }
 
 fn view(cfg: &riko_core::Config) -> ConfigView {
@@ -52,6 +54,7 @@ fn view(cfg: &riko_core::Config) -> ConfigView {
         shader_cache: cfg.launcher.shader_cache,
         minimize_while_playing: cfg.launcher.minimize_while_playing,
         presence_enabled: cfg.presence.enabled,
+        telemetry_enabled: cfg.telemetry.enabled,
         wine_prefix: cfg.paths.wine_prefix.display().to_string(),
         vortex_exe: cfg.paths.vortex_exe.display().to_string(),
         log_file: cfg.paths.log_file.display().to_string(),
@@ -101,6 +104,12 @@ pub async fn update_config(
         cfg.presence.enabled = v;
         if !v {
             state.presence.send(riko_core::presence::PresenceCmd::Idle);
+        }
+    }
+    if let Some(v) = patch.telemetry_enabled {
+        cfg.telemetry.enabled = v;
+        if v {
+            riko_core::telemetry::ensure_install_id(&mut cfg);
         }
     }
     cfg.save()?;

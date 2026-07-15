@@ -35,6 +35,17 @@ pub fn run() {
 
             handle_uris(app.handle(), std::env::args().collect());
 
+            let telemetry_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let state = telemetry_handle.state::<AppState>();
+                let snapshot = {
+                    let cfg = state.config.read().await;
+                    riko_core::telemetry::Snapshot::from_config(&cfg)
+                };
+                riko_core::telemetry::install_panic_hook(snapshot.clone());
+                riko_core::telemetry::heartbeat(&snapshot).await;
+            });
+
             let update_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let state = update_handle.state::<AppState>();

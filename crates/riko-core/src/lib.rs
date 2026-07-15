@@ -17,6 +17,7 @@ pub mod progress;
 pub mod self_update;
 pub mod setup;
 pub mod shortcuts;
+pub mod telemetry;
 pub mod updater;
 pub mod wine_versions;
 pub mod uri;

@@ -2,9 +2,11 @@
   import {
     getGamePluginOverrides,
     launchGame,
+    listAccounts,
     listPlugins,
     setPluginEnabled,
     stopGame,
+    type AccountView,
     type PerGamePlugins,
     type PluginInfo,
   } from "../lib/api";
@@ -27,6 +29,8 @@
   let busy = $state(false);
   let showLogs = $state(false);
   let heroBroken = $state(false);
+  let accounts = $state<AccountView[]>([]);
+  let showAccountMenu = $state(false);
   let plugins = $state<PluginInfo[]>([]);
   let overrides = $state<PerGamePlugins>({ enabled: [], disabled: [] });
   let pluginsLoadedFor = $state(0);
@@ -73,6 +77,9 @@
       pluginsLoadedFor = gameId;
       loadPlugins();
       loadStats();
+      listAccounts()
+        .then((a) => (accounts = a))
+        .catch(() => {});
     }
   });
 
@@ -81,10 +88,12 @@
     else loadPlaytime(true);
   });
 
-  async function play() {
+  async function play(username?: string) {
+    showAccountMenu = false;
     busy = true;
     try {
-      await launchGame(gameId);
+      await launchGame(gameId, username);
+      if (username) toast(`Launched as ${username}`, "success");
     } catch (e) {
       toast(String(e), "error");
     } finally {
@@ -176,16 +185,50 @@
           </button>
         </div>
       {:else}
-        <button
-          class="flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-          disabled={busy}
-          onclick={play}
-        >
-          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5.14v14l11-7-11-7z" />
-          </svg>
-          {busy ? "Launching…" : "Play"}
-        </button>
+        <div class="relative flex">
+          <button
+            class="flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 {accounts.length >
+            1
+              ? 'rounded-r-none'
+              : ''}"
+            disabled={busy}
+            onclick={() => play()}
+          >
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5.14v14l11-7-11-7z" />
+            </svg>
+            {busy ? "Launching…" : "Play"}
+          </button>
+          {#if accounts.length > 1}
+            <button
+              class="flex items-center rounded-r-lg border-l border-white/20 bg-accent px-2 text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+              disabled={busy}
+              aria-label="Play as another account"
+              onclick={() => (showAccountMenu = !showAccountMenu)}
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+            {#if showAccountMenu}
+              <div
+                class="absolute top-full right-0 z-10 mt-1.5 flex w-48 flex-col overflow-hidden rounded-lg border border-edge bg-panel py-1 shadow-xl"
+              >
+                {#each accounts as account (account.username)}
+                  <button
+                    class="px-4 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-panel-hover"
+                    onclick={() => play(account.username)}
+                  >
+                    Play as {account.username}
+                    {#if account.active}
+                      <span class="text-xs text-zinc-500">(current)</span>
+                    {/if}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          {/if}
+        </div>
       {/if}
     </div>
   </div>

@@ -1,0 +1,40 @@
+[package]
+name = "tempest"
+version = "0.1.1"
+edition = "2024"
+description = "Linux launcher for Vortex"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["cookies", "json", "stream", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+dirs = "6"
+which = "7"
+colored = "3"
+indicatif = "0.17"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+thiserror = "2"
+ctrlc = "3"
+libc = "0.2"
+futures-util = "0.3"
+serde_json = "1"
+aes-gcm = "0.10"
+base64 = "0.22"
+rand = "0.8"
+zip = "2"
+tar = "0.4"
+flate2 = "1"
+zstd = "0.13"
+
+[lints.clippy]
+all = "deny"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

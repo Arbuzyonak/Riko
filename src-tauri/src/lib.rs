@@ -94,6 +94,8 @@ pub fn run() {
             commands::setup::uninstall_riko,
             commands::settings::get_config,
             commands::settings::update_config,
+            commands::settings::get_launch_overrides,
+            commands::settings::set_launch_overrides,
             commands::plugins::list_plugins,
             commands::plugins::install_plugin,
             commands::plugins::import_plugin,

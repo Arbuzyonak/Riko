@@ -70,6 +70,7 @@ pub async fn spawn_game(
         return Err(RikoError::AlreadyRunning(game_id));
     }
 
+    let cfg = cfg.effective_for_game(game_id);
     let plugin_env = riko_core::plugin::resolve_env(&cfg, Some(game_id));
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let handle = riko_core::launcher::launch(&cfg, game_id, uri, plugin_env, tx).await?;

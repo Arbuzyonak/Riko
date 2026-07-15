@@ -53,3 +53,46 @@ pub fn add_seconds(game_id: u32, secs: u64) {
     entry.last_played = Some(Utc::now());
     save(&entries);
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SessionRecord {
+    pub game_id: u32,
+    pub started_at: DateTime<Utc>,
+    pub duration_secs: u64,
+}
+
+const SESSION_LIMIT: usize = 500;
+
+fn sessions_path() -> PathBuf {
+    Config::data_dir().join("sessions.json")
+}
+
+pub fn load_sessions() -> Vec<SessionRecord> {
+    std::fs::read_to_string(sessions_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+pub fn record_session(game_id: u32, started_at: DateTime<Utc>, duration_secs: u64) {
+    let mut sessions = load_sessions();
+    sessions.push(SessionRecord {
+        game_id,
+        started_at,
+        duration_secs,
+    });
+    if sessions.len() > SESSION_LIMIT {
+        let excess = sessions.len() - SESSION_LIMIT;
+        sessions.drain(..excess);
+    }
+    if let Ok(json) = serde_json::to_string(&sessions) {
+        let path = sessions_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).ok();
+        }
+        let tmp = path.with_extension("json.tmp");
+        if std::fs::write(&tmp, json).is_ok() {
+            std::fs::rename(&tmp, &path).ok();
+        }
+    }
+}

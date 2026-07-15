@@ -101,6 +101,7 @@ pub fn run() {
             commands::doctor::run_doctor,
             commands::doctor::apply_fix,
             commands::playtime::get_playtime,
+            commands::playtime::get_sessions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running riko-launcher");

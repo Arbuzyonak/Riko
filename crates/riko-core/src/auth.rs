@@ -1,8 +1,9 @@
 use crate::config::{Config, StoredAccount};
-use crate::{RikoError, VORTEX_BASE};
+use crate::{net, RikoError, USER_AGENT, VORTEX_BASE};
 
 pub async fn login_direct(username: &str, password: &str) -> Result<String, RikoError> {
     let client = reqwest::Client::builder()
+        .user_agent(USER_AGENT)
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
@@ -100,19 +101,21 @@ pub fn logout(cfg: &mut Config) -> Result<(), RikoError> {
 }
 
 pub async fn validate_session(token: &str) -> Result<bool, RikoError> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(format!("{VORTEX_BASE}/api/games/1"))
-        .header("Cookie", format!("session_token={token}"))
-        .send()
-        .await?;
+    let resp = net::send_retrying(
+        || {
+            net::shared()
+                .get(format!("{VORTEX_BASE}/api/games/1"))
+                .header("Cookie", format!("session_token={token}"))
+        },
+        3,
+    )
+    .await?;
     let status = resp.status();
     Ok(!matches!(status.as_u16(), 401 | 403))
 }
 
 pub async fn get_play_uri(session_token: &str, game_id: u32) -> Result<String, RikoError> {
-    let client = reqwest::Client::new();
-    let resp = client
+    let resp = net::shared()
         .get(format!("{VORTEX_BASE}/games/{game_id}/play"))
         .header("Cookie", format!("session_token={session_token}"))
         .send()

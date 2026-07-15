@@ -13,7 +13,7 @@ async fn download_icon(game: &Game) -> Option<PathBuf> {
     let icons_dir = Config::data_dir().join("icons");
     std::fs::create_dir_all(&icons_dir).ok()?;
     let path = icons_dir.join(format!("{}.png", game.id));
-    let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?;
+    let bytes = crate::net::downloader().get(url).send().await.ok()?.bytes().await.ok()?;
     std::fs::write(&path, &bytes).ok()?;
     Some(path)
 }

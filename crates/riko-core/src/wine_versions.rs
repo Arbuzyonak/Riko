@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 const RELEASES_URL: &str =
     "https://api.github.com/repos/Kron4ek/Wine-Builds/releases?per_page=5";
+#[cfg(unix)]
 const STAGE: &str = "wine-install";
 
 #[derive(Clone, Debug, Serialize)]
@@ -46,11 +47,7 @@ pub fn list_installed() -> Vec<InstalledWine> {
 }
 
 pub async fn list_available() -> Result<Vec<AvailableWine>, RikoError> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(RELEASES_URL)
-        .header("User-Agent", "riko-launcher")
-        .send()
+    let resp = crate::net::send_retrying(|| crate::net::shared().get(RELEASES_URL), 3)
         .await?
         .error_for_status()?;
     let releases: Vec<serde_json::Value> = resp.json().await?;
@@ -84,10 +81,8 @@ pub async fn list_available() -> Result<Vec<AvailableWine>, RikoError> {
 #[cfg(unix)]
 pub async fn install(url: &str, sink: &dyn ProgressSink) -> Result<InstalledWine, RikoError> {
     sink.started(STAGE, "Downloading wine build");
-    let client = reqwest::Client::new();
-    let resp = client
+    let resp = crate::net::downloader()
         .get(url)
-        .header("User-Agent", "riko-launcher")
         .send()
         .await?
         .error_for_status()?;
@@ -138,6 +133,7 @@ pub fn remove(name: &str) -> Result<(), RikoError> {
     Ok(())
 }
 
+#[cfg(unix)]
 fn installed_names() -> Vec<String> {
     list_installed().into_iter().map(|w| w.name).collect()
 }

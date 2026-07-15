@@ -31,8 +31,8 @@ export interface GameSession {
   started_at: string;
 }
 
-export const launchGame = (gameId: number) =>
-  invoke<number>("launch_game", { gameId });
+export const launchGame = (gameId: number, username?: string) =>
+  invoke<number>("launch_game", { gameId, username: username ?? null });
 
 export const stopGame = (gameId: number) =>
   invoke<void>("stop_game", { gameId });

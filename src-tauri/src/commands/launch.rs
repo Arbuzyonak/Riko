@@ -29,13 +29,22 @@ pub async fn launch_game(
     app: AppHandle,
     state: State<'_, AppState>,
     game_id: u32,
+    username: Option<String>,
 ) -> Result<u32, RikoError> {
     if state.sessions.lock().await.contains_key(&game_id) {
         return Err(RikoError::AlreadyRunning(game_id));
     }
     let (token, cfg) = {
         let cfg = state.config.read().await;
-        let token = cfg.auth.session_token.clone().ok_or(RikoError::NotLoggedIn)?;
+        let token = match &username {
+            Some(name) => cfg
+                .accounts
+                .iter()
+                .find(|a| a.username.eq_ignore_ascii_case(name))
+                .map(|a| a.session_token.clone())
+                .ok_or_else(|| RikoError::Auth(format!("no saved account named '{name}'")))?,
+            None => cfg.auth.session_token.clone().ok_or(RikoError::NotLoggedIn)?,
+        };
         (token, cfg.clone())
     };
     let uri = match riko_core::auth::get_play_uri(&token, game_id).await {

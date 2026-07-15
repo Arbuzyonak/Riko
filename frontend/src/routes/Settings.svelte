@@ -1,19 +1,25 @@
 <script lang="ts">
   import {
     getConfig,
+    listAccounts,
     logout,
+    removeAccount,
+    switchAccount,
     updateConfig,
     uninstallRiko,
+    type AccountView,
     type ConfigPatch,
     type ConfigView,
   } from "../lib/api";
   import { navigate } from "../lib/router.svelte";
-  import { refreshStatus } from "../lib/stores/app.svelte";
+  import { appState, refreshStatus } from "../lib/stores/app.svelte";
   import { toast } from "../lib/stores/toast.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
   import Modal from "../lib/components/Modal.svelte";
 
   let cfg = $state<ConfigView | null>(null);
+  let accounts = $state<AccountView[]>([]);
+  let switching = $state<string | null>(null);
   let wineBinary = $state("");
   let envRows = $state<{ key: string; value: string }[]>([]);
   let confirmUninstall = $state(false);
@@ -25,8 +31,34 @@
 
   async function load() {
     cfg = await getConfig();
+    accounts = await listAccounts();
     wineBinary = cfg.wine_binary;
     envRows = Object.entries(cfg.wine_env).map(([key, value]) => ({ key, value }));
+  }
+
+  async function handleSwitch(username: string) {
+    switching = username;
+    try {
+      accounts = await switchAccount(username);
+      cfg = await getConfig();
+      await refreshStatus();
+      toast(`Switched to ${username}`, "success");
+    } catch (e) {
+      toast(String(e), "error");
+    } finally {
+      switching = null;
+    }
+  }
+
+  async function handleRemove(username: string) {
+    try {
+      accounts = await removeAccount(username);
+      cfg = await getConfig();
+      await refreshStatus();
+      if (!appState.status?.logged_in) navigate("/login");
+    } catch (e) {
+      toast(String(e), "error");
+    }
   }
 
   async function patch(p: ConfigPatch) {
@@ -57,7 +89,13 @@
   async function handleLogout() {
     await logout();
     await refreshStatus();
-    navigate("/login");
+    if (appState.status?.logged_in) {
+      cfg = await getConfig();
+      accounts = await listAccounts();
+      toast(`Switched to ${appState.status.username}`, "success");
+    } else {
+      navigate("/login");
+    }
   }
 
   async function handleUninstall() {
@@ -76,23 +114,60 @@
 
   {#if cfg}
     <section class="flex flex-col gap-1 rounded-xl border border-edge bg-panel px-5 py-4">
-      <h2 class="mb-2 text-sm font-semibold text-zinc-300 uppercase tracking-wide">
-        Account
-      </h2>
-      <div class="flex items-center justify-between py-1">
-        <div>
-          <p class="text-sm text-zinc-200">{cfg.username ?? "Not signed in"}</p>
-          <p class="text-xs text-zinc-500">
-            {cfg.has_session ? "Session active" : "No active session"}
-          </p>
-        </div>
+      <div class="mb-2 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+          Accounts
+        </h2>
         <button
-          class="rounded-lg border border-edge px-3.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-panel-hover"
-          onclick={handleLogout}
+          class="rounded-lg border border-edge px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-panel-hover"
+          onclick={() => navigate("/login")}
         >
-          Log out
+          Add account
         </button>
       </div>
+      {#each accounts as account (account.username)}
+        <div class="flex items-center justify-between border-t border-edge/60 py-2.5 first:border-t-0">
+          <div class="flex items-center gap-2.5">
+            <span
+              class="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-xs font-semibold text-accent uppercase"
+            >
+              {account.username.slice(0, 1)}
+            </span>
+            <div>
+              <p class="text-sm text-zinc-200">{account.username}</p>
+              {#if account.active}
+                <p class="text-xs text-ok">Active</p>
+              {/if}
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            {#if account.active}
+              <button
+                class="rounded-lg border border-edge px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-panel-hover"
+                onclick={handleLogout}
+              >
+                Log out
+              </button>
+            {:else}
+              <button
+                class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+                disabled={switching !== null}
+                onclick={() => handleSwitch(account.username)}
+              >
+                {switching === account.username ? "Switching…" : "Switch"}
+              </button>
+              <button
+                class="text-xs text-zinc-500 transition-colors hover:text-danger"
+                onclick={() => handleRemove(account.username)}
+              >
+                Remove
+              </button>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <p class="py-1 text-sm text-zinc-500">Not signed in</p>
+      {/each}
     </section>
 
     <section class="flex flex-col rounded-xl border border-edge bg-panel px-5 py-4">

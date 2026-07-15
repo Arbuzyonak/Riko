@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{Config, StoredAccount};
 use crate::{RikoError, VORTEX_BASE};
 
 pub async fn login_direct(username: &str, password: &str) -> Result<String, RikoError> {
@@ -35,9 +35,67 @@ pub async fn login_direct(username: &str, password: &str) -> Result<String, Riko
     Err(RikoError::Auth(detail))
 }
 
+pub fn upsert_account(cfg: &mut Config, username: &str, token: &str) {
+    match cfg
+        .accounts
+        .iter_mut()
+        .find(|a| a.username.eq_ignore_ascii_case(username))
+    {
+        Some(account) => {
+            account.username = username.to_string();
+            account.session_token = token.to_string();
+        }
+        None => cfg.accounts.push(StoredAccount {
+            username: username.to_string(),
+            session_token: token.to_string(),
+        }),
+    }
+    cfg.auth.username = Some(username.to_string());
+    cfg.auth.session_token = Some(token.to_string());
+}
+
+pub fn switch_account(cfg: &mut Config, username: &str) -> Result<(), RikoError> {
+    let account = cfg
+        .accounts
+        .iter()
+        .find(|a| a.username.eq_ignore_ascii_case(username))
+        .ok_or_else(|| RikoError::Auth(format!("no saved account named '{username}'")))?;
+    cfg.auth.username = Some(account.username.clone());
+    cfg.auth.session_token = Some(account.session_token.clone());
+    Ok(())
+}
+
+pub fn remove_account(cfg: &mut Config, username: &str) {
+    cfg.accounts
+        .retain(|a| !a.username.eq_ignore_ascii_case(username));
+    if cfg
+        .auth
+        .username
+        .as_deref()
+        .is_some_and(|active| active.eq_ignore_ascii_case(username))
+    {
+        match cfg.accounts.first() {
+            Some(next) => {
+                cfg.auth.username = Some(next.username.clone());
+                cfg.auth.session_token = Some(next.session_token.clone());
+            }
+            None => {
+                cfg.auth.username = None;
+                cfg.auth.session_token = None;
+            }
+        }
+    }
+}
+
 pub fn logout(cfg: &mut Config) -> Result<(), RikoError> {
-    cfg.auth.session_token = None;
-    cfg.auth.username = None;
+    let active = cfg.auth.username.clone();
+    match active {
+        Some(username) => remove_account(cfg, &username),
+        None => {
+            cfg.auth.session_token = None;
+            cfg.auth.username = None;
+        }
+    }
     cfg.save()
 }
 
@@ -82,4 +140,34 @@ pub async fn get_play_uri(session_token: &str, game_id: u32) -> Result<String, R
     Err(RikoError::Auth(
         "could not find vortex:// URI in play page; the session token may be invalid or the site may have changed".to_string(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn account_rotation_flow() {
+        let mut cfg = Config::default();
+        upsert_account(&mut cfg, "alice", "tok-a");
+        upsert_account(&mut cfg, "bob", "tok-b");
+        assert_eq!(cfg.accounts.len(), 2);
+        assert_eq!(cfg.auth.username.as_deref(), Some("bob"));
+
+        switch_account(&mut cfg, "alice").unwrap();
+        assert_eq!(cfg.auth.session_token.as_deref(), Some("tok-a"));
+
+        upsert_account(&mut cfg, "ALICE", "tok-a2");
+        assert_eq!(cfg.accounts.len(), 2);
+        assert_eq!(cfg.auth.session_token.as_deref(), Some("tok-a2"));
+
+        remove_account(&mut cfg, "alice");
+        assert_eq!(cfg.auth.username.as_deref(), Some("bob"));
+        assert_eq!(cfg.auth.session_token.as_deref(), Some("tok-b"));
+
+        remove_account(&mut cfg, "bob");
+        assert!(cfg.auth.username.is_none());
+        assert!(cfg.auth.session_token.is_none());
+        assert!(switch_account(&mut cfg, "nobody").is_err());
+    }
 }

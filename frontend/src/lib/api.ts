@@ -144,6 +144,19 @@ export interface PerGamePlugins {
 export const getGamePluginOverrides = (gameId: number) =>
   invoke<PerGamePlugins>("get_game_plugin_overrides", { gameId });
 
+export interface AccountView {
+  username: string;
+  active: boolean;
+}
+
+export const listAccounts = () => invoke<AccountView[]>("list_accounts");
+
+export const switchAccount = (username: string) =>
+  invoke<AccountView[]>("switch_account", { username });
+
+export const removeAccount = (username: string) =>
+  invoke<AccountView[]>("remove_account", { username });
+
 export interface GameStats {
   visits: number;
   active: number;

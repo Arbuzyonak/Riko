@@ -171,6 +171,26 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    async fn live_friends_shape() {
+        let cfg = Config::load();
+        let token = cfg.auth.session_token.expect("no stored session");
+        let client = reqwest::Client::new();
+        for path in ["/api/friends", "/api/users/avatar-pictures?ids=1,2"] {
+            let resp = client
+                .get(format!("{}{path}", crate::VORTEX_BASE))
+                .header("Cookie", format!("session_token={token}"))
+                .send()
+                .await
+                .unwrap();
+            let status = resp.status();
+            let body: serde_json::Value = resp.json().await.unwrap_or_default();
+            println!("== {path} ({status})");
+            println!("{}", serde_json::to_string_pretty(&body).unwrap_or_default());
+        }
+    }
+
+    #[tokio::test]
+    #[ignore]
     async fn live_game_stats() {
         let cfg = Config::load();
         let token = cfg.auth.session_token.expect("no stored session");

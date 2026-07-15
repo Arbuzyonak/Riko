@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod doctor;
+pub mod friends;
 pub mod games;
 pub mod launch;
 pub mod playtime;

@@ -11,6 +11,7 @@
   import Settings from "./routes/Settings.svelte";
   import Plugins from "./routes/Plugins.svelte";
   import Doctor from "./routes/Doctor.svelte";
+  import Friends from "./routes/Friends.svelte";
   import { toast } from "./lib/stores/toast.svelte";
   import { initSessionEvents } from "./lib/stores/session.svelte";
   import { initProgressEvents } from "./lib/stores/progress.svelte";
@@ -52,6 +53,8 @@
         <Plugins />
       {:else if router.path === "/doctor"}
         <Doctor />
+      {:else if router.path === "/friends"}
+        <Friends />
       {:else if router.path === "/settings"}
         <Settings />
       {:else if router.path.startsWith("/game/")}

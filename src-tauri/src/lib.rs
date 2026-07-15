@@ -57,6 +57,7 @@ pub fn run() {
             commands::auth::remove_account,
             commands::games::list_games,
             commands::games::get_game_stats,
+            commands::friends::get_friends,
             commands::launch::launch_game,
             commands::launch::stop_game,
             commands::launch::get_running_sessions,

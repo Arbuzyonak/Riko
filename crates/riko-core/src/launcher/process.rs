@@ -1,7 +1,6 @@
-use colored::Colorize;
-use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
 use crate::config::Config;
+use std::path::PathBuf;
+use std::process::{Child, Stdio};
 
 pub struct ProcessManager {
     receiver: Option<Child>,
@@ -13,7 +12,8 @@ impl ProcessManager {
     }
 
     pub fn receiver_path(cfg: &Config) -> PathBuf {
-        cfg.paths.vortex_exe
+        cfg.paths
+            .vortex_exe
             .parent()
             .unwrap_or_else(|| std::path::Path::new("."))
             .join("receiver.exe")
@@ -23,44 +23,38 @@ impl ProcessManager {
         let path = Self::receiver_path(cfg);
 
         if !path.exists() {
-            println!(
-                "{} receiver.exe not found at {} (in-game notifications may not work)",
-                "[WARN]".yellow(),
-                path.display()
-            );
+            tracing::debug!("receiver.exe not found at {}", path.display());
             return;
         }
 
-        if is_receiver_running() {
+        if crate::platform::receiver_running() {
             tracing::debug!("receiver.exe already running");
             return;
         }
 
-        println!("{} Starting receiver.exe...", "[INFO]".cyan());
-        match Command::new(&cfg.wine.binary)
-            .env("WINEPREFIX", &cfg.paths.wine_prefix)
-            .env("WINEDEBUG", "-all")
-            .arg(&path)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-        {
+        let mut cmd = crate::platform::build_receiver_command(cfg, &path);
+        cmd.stdout(Stdio::null());
+        cmd.stderr(Stdio::null());
+        match cmd.spawn() {
             Ok(child) => {
-                println!("{} receiver.exe started (pid {})", "[PASS]".green(), child.id());
+                tracing::debug!("receiver.exe started (pid {})", child.id());
                 self.receiver = Some(child);
             }
-            Err(e) => {
-                println!("{} Could not start receiver.exe: {}", "[WARN]".yellow(), e);
-            }
+            Err(e) => tracing::warn!("could not start receiver.exe: {}", e),
         }
     }
 
     pub fn shutdown(&mut self) {
         if let Some(mut child) = self.receiver.take() {
-            tracing::debug!("Stopping receiver.exe");
             child.kill().ok();
             child.wait().ok();
         }
+    }
+}
+
+impl Default for ProcessManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -68,12 +62,4 @@ impl Drop for ProcessManager {
     fn drop(&mut self) {
         self.shutdown();
     }
-}
-
-fn is_receiver_running() -> bool {
-    std::process::Command::new("pgrep")
-        .args(["-f", "receiver.exe"])
-        .output()
-        .map(|out| out.status.success())
-        .unwrap_or(false)
 }

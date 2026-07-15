@@ -1,36 +1,44 @@
+use crate::RikoError;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::collections::HashMap;
-use crate::TempestError;
+use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Config {
+    #[serde(default)]
     pub auth: AuthConfig,
+    #[serde(default)]
     pub paths: PathConfig,
+    #[serde(default)]
     pub wine: WineConfig,
+    #[serde(default)]
     pub launcher: LauncherConfig,
+    #[serde(default)]
+    pub plugins: PluginConfig,
+    #[serde(default)]
+    pub presence: PresenceConfig,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct AuthConfig {
     pub session_token: Option<String>,
     pub username: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PathConfig {
     pub wine_prefix: PathBuf,
     pub vortex_exe: PathBuf,
     pub log_file: PathBuf,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WineConfig {
     pub binary: String,
     pub env: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct LauncherConfig {
     pub filter_wine_noise: bool,
     pub auto_update: bool,
@@ -40,13 +48,34 @@ pub struct LauncherConfig {
     pub shader_cache: bool,
 }
 
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct PluginConfig {
+    #[serde(default)]
+    pub enabled: Vec<String>,
+    #[serde(default)]
+    pub per_game: HashMap<String, PerGamePlugins>,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct PerGamePlugins {
+    #[serde(default)]
+    pub enabled: Vec<String>,
+    #[serde(default)]
+    pub disabled: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PresenceConfig {
+    pub enabled: bool,
+}
+
 impl Default for PathConfig {
     fn default() -> Self {
         let data = Config::data_dir();
         Self {
             wine_prefix: data.join("prefix"),
             vortex_exe: data.join("Vortex.exe"),
-            log_file: Config::data_dir().join("tempest.log"),
+            log_file: data.join("riko.log"),
         }
     }
 }
@@ -73,21 +102,66 @@ impl Default for LauncherConfig {
     }
 }
 
+impl Default for PresenceConfig {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
 impl Config {
     pub fn config_dir() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("~/.config"))
-            .join("tempest")
+        std::env::var_os("RIKO_CONFIG_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                dirs::config_dir()
+                    .unwrap_or_else(|| PathBuf::from("~/.config"))
+                    .join("riko")
+            })
     }
 
     pub fn data_dir() -> PathBuf {
-        dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("~/.local/share"))
-            .join("tempest")
+        std::env::var_os("RIKO_DATA_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                dirs::data_local_dir()
+                    .unwrap_or_else(|| PathBuf::from("~/.local/share"))
+                    .join("riko")
+            })
+    }
+
+    pub fn config_file() -> PathBuf {
+        Self::config_dir().join("config.toml")
+    }
+
+    pub fn migrate_from_tempest() -> bool {
+        if Self::config_file().exists() {
+            return false;
+        }
+        let tempest_dir = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("~/.config"))
+            .join("tempest");
+        let src_config = tempest_dir.join("config.toml");
+        if !src_config.exists() {
+            return false;
+        }
+        if std::fs::create_dir_all(Self::config_dir()).is_err() {
+            return false;
+        }
+        let copied = std::fs::copy(&src_config, Self::config_file()).is_ok();
+        let src_key = tempest_dir.join("vortex.key");
+        if src_key.exists() {
+            std::fs::copy(&src_key, Self::config_dir().join("vortex.key")).ok();
+        }
+        if copied {
+            let mut cfg = Self::load();
+            cfg.paths.log_file = Self::data_dir().join("riko.log");
+            cfg.save().ok();
+        }
+        copied
     }
 
     pub fn load() -> Self {
-        let path = Self::config_dir().join("config.toml");
+        let path = Self::config_file();
         if !path.exists() {
             return Self::default();
         }
@@ -101,18 +175,18 @@ impl Config {
         #[derive(serde::Deserialize)]
         struct RawAuth {
             session_token: Option<String>,
-            #[allow(dead_code)]
-            username: Option<String>,
         }
 
         let raw: RawConfig = toml::from_str(&contents).unwrap_or(RawConfig {
             auth: RawAuth {
                 session_token: None,
-                username: None,
             },
         });
 
-        let mut cfg: Self = toml::from_str(&contents).unwrap_or_default();
+        let mut cfg: Self = toml::from_str(&contents).unwrap_or_else(|e| {
+            tracing::warn!("config parse failed, using defaults: {}", e);
+            Self::default()
+        });
 
         if let Some(ref token) = raw.auth.session_token
             && let Some(decrypted) = crate::crypto::decrypt(token)
@@ -123,8 +197,8 @@ impl Config {
         cfg
     }
 
-    pub fn save(&self) -> Result<(), TempestError> {
-        let mut cloned = self.serialize_plain();
+    pub fn save(&self) -> Result<(), RikoError> {
+        let mut cloned = self.clone();
 
         if let Some(ref token) = cloned.auth.session_token.clone()
             && crate::crypto::decrypt(token).is_none()
@@ -134,37 +208,10 @@ impl Config {
 
         let dir = Self::config_dir();
         std::fs::create_dir_all(&dir)?;
-        let path = dir.join("config.toml");
-        let contents = toml::to_string_pretty(&cloned)
-            .map_err(|e| TempestError::ConfigError(e.to_string()))?;
-        std::fs::write(path, contents)?;
+        let contents =
+            toml::to_string_pretty(&cloned).map_err(|e| RikoError::Config(e.to_string()))?;
+        std::fs::write(dir.join("config.toml"), contents)?;
         Ok(())
-    }
-
-    fn serialize_plain(&self) -> Self {
-        Self {
-            auth: AuthConfig {
-                session_token: self.auth.session_token.clone(),
-                username: self.auth.username.clone(),
-            },
-            paths: PathConfig {
-                wine_prefix: self.paths.wine_prefix.clone(),
-                vortex_exe: self.paths.vortex_exe.clone(),
-                log_file: self.paths.log_file.clone(),
-            },
-            wine: WineConfig {
-                binary: self.wine.binary.clone(),
-                env: self.wine.env.clone(),
-            },
-            launcher: LauncherConfig {
-                filter_wine_noise: self.launcher.filter_wine_noise,
-                auto_update: self.launcher.auto_update,
-                use_esync: self.launcher.use_esync,
-                use_fsync: self.launcher.use_fsync,
-                use_gamemode: self.launcher.use_gamemode,
-                shader_cache: self.launcher.shader_cache,
-            },
-        }
     }
 }
 
@@ -177,8 +224,47 @@ mod tests {
         let cfg = Config::default();
         let serialized = toml::to_string_pretty(&cfg).unwrap();
         let loaded: Config = toml::from_str(&serialized).unwrap();
-        assert_eq!(loaded.launcher.filter_wine_noise, cfg.launcher.filter_wine_noise);
+        assert_eq!(
+            loaded.launcher.filter_wine_noise,
+            cfg.launcher.filter_wine_noise
+        );
         assert_eq!(loaded.launcher.auto_update, cfg.launcher.auto_update);
         assert_eq!(loaded.wine.binary, cfg.wine.binary);
+        assert_eq!(loaded.presence.enabled, cfg.presence.enabled);
+    }
+
+    #[test]
+    fn parses_tempest_config() {
+        let tempest_toml = r#"
+[auth]
+username = "player"
+
+[paths]
+wine_prefix = "/home/user/.local/share/tempest/prefix"
+vortex_exe = "/home/user/.local/share/tempest/Vortex.exe"
+log_file = "/home/user/.local/share/tempest/tempest.log"
+
+[wine]
+binary = "wine"
+
+[wine.env]
+
+[launcher]
+filter_wine_noise = true
+auto_update = true
+use_esync = true
+use_fsync = false
+use_gamemode = false
+shader_cache = true
+"#;
+        let cfg: Config = toml::from_str(tempest_toml).unwrap();
+        assert_eq!(cfg.auth.username.as_deref(), Some("player"));
+        assert!(!cfg.launcher.use_fsync);
+        assert!(cfg.plugins.enabled.is_empty());
+        assert!(cfg.presence.enabled);
+        assert_eq!(
+            cfg.paths.wine_prefix,
+            PathBuf::from("/home/user/.local/share/tempest/prefix")
+        );
     }
 }

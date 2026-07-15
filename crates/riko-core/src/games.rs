@@ -1,76 +1,55 @@
-use colored::Colorize;
-use std::io::Write;
 use crate::config::Config;
-use crate::TempestError;
+use crate::{RikoError, VORTEX_BASE};
+use serde::{Deserialize, Serialize};
 
-const BASE: &str = "https://playvortex.io";
+const DISCOVERY_WINDOW: u32 = 5;
 
-pub async fn list() {
-    println!("{}", "=== Vortex Games ===".bold().cyan());
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Game {
+    pub id: u32,
+    pub name: String,
+    pub description: Option<String>,
+    pub thumbnail_url: Option<String>,
+    pub creator: Option<String>,
+}
 
-    let cfg = Config::load();
-    let token = match cfg.auth.session_token.clone() {
-        Some(t) => t,
-        None => {
-            println!("{} Not logged in. Run {} first.", "[ERROR]".red(), "tempest login".cyan());
-            return;
-        }
-    };
-
+pub async fn fetch_all(token: &str) -> Result<Vec<Game>, RikoError> {
     let client = reqwest::Client::new();
-    let mut games: Vec<Game> = Vec::new();
-
-    for id in 1u32.. {
-        print!("\r{} Fetching game {}...", "[INFO]".cyan(), id);
-        std::io::stdout().flush().ok();
-
-        match fetch_game_page(&client, &token, id).await {
-            Ok(Some(name)) => {
-                games.push(Game { id, name });
-            }
-            Ok(None) => {
-                println!();
-                break;
-            }
-            Err(_) => {
-                println!();
-                break;
+    let mut games = Vec::new();
+    let mut start = 1u32;
+    loop {
+        let ids: Vec<u32> = (start..start + DISCOVERY_WINDOW).collect();
+        let results = futures_util::future::join_all(
+            ids.iter().map(|id| fetch_game(&client, token, *id)),
+        )
+        .await;
+        let mut done = false;
+        for result in results {
+            match result? {
+                Some(game) => games.push(game),
+                None => {
+                    done = true;
+                    break;
+                }
             }
         }
+        if done {
+            break;
+        }
+        start += DISCOVERY_WINDOW;
     }
-
-    if games.is_empty() {
-        println!("{} No games found for your account.", "[INFO]".cyan());
-        return;
-    }
-
-    println!(
-        "{} Found {} game(s)\n",
-        "[INFO]".cyan(),
-        games.len().to_string().bold()
-    );
-
-    for game in &games {
-        println!("  {:>5}  {}", game.id.to_string().bold(), game.name.bold());
-    }
-
-    println!();
-    println!("  Run {} to launch a game.", "tempest play <id>".cyan());
+    save_cache(&games);
+    Ok(games)
 }
 
-struct Game {
-    id: u32,
-    name: String,
-}
-
-async fn fetch_game_page(
+async fn fetch_game(
     client: &reqwest::Client,
     token: &str,
     id: u32,
-) -> Result<Option<String>, TempestError> {
+) -> Result<Option<Game>, RikoError> {
     let resp = client
-        .get(format!("{BASE}/api/games/{id}"))
-        .header("Cookie", format!("session_token={}", token))
+        .get(format!("{VORTEX_BASE}/api/games/{id}"))
+        .header("Cookie", format!("session_token={token}"))
         .send()
         .await?;
 
@@ -78,11 +57,59 @@ async fn fetch_game_page(
         return Ok(None);
     }
 
-    let game: serde_json::Value = resp.json().await?;
-    let name = match game.get("name").and_then(|v| v.as_str()) {
-        Some(n) => n.to_string(),
-        None => return Ok(None),
+    let body: serde_json::Value = resp.json().await?;
+    let name = match body.get("name").and_then(|v| v.as_str()) {
+        Some(n) if !n.is_empty() => n.to_string(),
+        _ => return Ok(None),
     };
 
-    if name.is_empty() { Ok(None) } else { Ok(Some(name)) }
+    let string_field = |keys: &[&str]| {
+        keys.iter().find_map(|k| {
+            body.get(*k)
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+        })
+    };
+
+    let creator = body
+        .get("creator")
+        .and_then(|c| {
+            c.as_str()
+                .map(str::to_string)
+                .or_else(|| c.get("username").and_then(|u| u.as_str()).map(str::to_string))
+        })
+        .filter(|s| !s.is_empty());
+
+    Ok(Some(Game {
+        id,
+        name,
+        description: string_field(&["description"]),
+        thumbnail_url: string_field(&["thumbnail_url", "thumbnail", "icon_url", "image_url"]),
+        creator,
+    }))
+}
+
+fn cache_path() -> std::path::PathBuf {
+    Config::data_dir().join("games.json")
+}
+
+pub fn load_cached() -> Vec<Game> {
+    std::fs::read_to_string(cache_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_cache(games: &[Game]) {
+    let path = cache_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+    if let Ok(json) = serde_json::to_string_pretty(games) {
+        let tmp = path.with_extension("json.tmp");
+        if std::fs::write(&tmp, json).is_ok() {
+            std::fs::rename(&tmp, &path).ok();
+        }
+    }
 }

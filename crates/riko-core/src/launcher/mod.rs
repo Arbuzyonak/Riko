@@ -1,18 +1,13 @@
 pub mod process;
 
-use colored::Colorize;
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
 use crate::config::Config;
-
-fn perf_summary(config: &Config, use_gamemode: bool) -> String {
-    let mut active = vec![];
-    if config.launcher.use_fsync { active.push("fsync"); }
-    else if config.launcher.use_esync { active.push("esync"); }
-    if use_gamemode { active.push("gamemode"); }
-    if config.launcher.shader_cache { active.push("shader-cache"); }
-    if active.is_empty() { "none".to_string() } else { active.join(" ") }
-}
+use crate::plugin::ResolvedPluginEnv;
+use crate::RikoError;
+use chrono::{DateTime, Utc};
+use serde::Serialize;
+use std::process::Stdio;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::{mpsc, oneshot};
 
 const NOISE_PATTERNS: &[&str] = &[
     "fixme:",
@@ -31,176 +26,166 @@ fn is_noise(line: &str) -> bool {
     NOISE_PATTERNS.iter().any(|p| line.contains(p))
 }
 
-fn build_wine_command(config: &Config, uri: &str, use_gamemode: bool) -> Command {
-    let perf = &config.launcher;
-
-    let mut cmd = if use_gamemode {
-        let mut c = Command::new("gamemoderun");
-        c.arg(&config.wine.binary);
-        c
-    } else {
-        Command::new(&config.wine.binary)
-    };
-
-    cmd.env("WINEPREFIX", &config.paths.wine_prefix);
-
-    cmd.env("WGPU_BACKEND", "vulkan");
-
-    if perf.use_esync { cmd.env("WINEESYNC", "1"); }
-    if perf.use_fsync { cmd.env("WINEFSYNC", "1"); }
-
-    if perf.shader_cache {
-        let cache = dirs::cache_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from(
-                std::env::var("HOME").unwrap_or_default() + "/.cache"
-            ))
-            .join("vortex-shaders");
-        std::fs::create_dir_all(&cache).ok();
-        cmd.env("VKD3D_SHADER_CACHE_PATH", cache);
-    }
-
-    for (key, value) in &config.wine.env {
-        cmd.env(key, value);
-    }
-
-    for (key, value) in crate::plugin::env_vars(config) {
-        cmd.env(key, value);
-    }
-
-    cmd.arg(&config.paths.vortex_exe);
-    cmd.arg(uri);
-    cmd
+#[derive(Clone, Debug, Serialize)]
+pub struct GameSession {
+    pub game_id: u32,
+    pub pid: u32,
+    pub started_at: DateTime<Utc>,
 }
 
-pub async fn play(game_id: u32) {
-    let mut cfg = Config::load();
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum GameEvent {
+    Started { pid: u32 },
+    Log { line: String, is_stderr: bool },
+    Exited { code: Option<i32>, duration_secs: u64 },
+}
 
-    let token = match cfg.auth.session_token.clone() {
-        Some(t) => t,
-        None => {
-            println!("{} Not logged in. Running login flow...", "[WARN]".yellow());
-            crate::auth::login().await;
-            cfg = Config::load();
-            match cfg.auth.session_token.clone() {
-                Some(t) => t,
-                None => {
-                    eprintln!("{} Login failed. Aborting.", "[ERROR]".red());
-                    return;
-                }
-            }
-        }
-    };
+pub struct GameHandle {
+    pub session: GameSession,
+    kill: oneshot::Sender<()>,
+}
 
-    println!("{} Fetching play URI for game {}...", "[INFO]".cyan(), game_id);
-    match crate::auth::get_play_uri(&token, game_id).await {
-        Ok(uri) => launch_with_uri(uri).await,
-        Err(e) => {
-            eprintln!("{} Failed to get play URI: {}", "[ERROR]".red(), e);
-            eprintln!("  Try {} to re-authenticate.", "tempest login".cyan());
-        }
+impl GameHandle {
+    pub fn terminate(self) {
+        let _ = self.kill.send(());
     }
 }
 
-pub async fn play_with_token(game_id: u32, token: String) {
-    let uri = format!("vortex://play?game={}&token={}", game_id, token);
-    launch_with_uri(uri).await;
-}
-
-async fn launch_with_uri(uri: String) {
-    let cfg = Config::load();
-
+pub async fn launch(
+    cfg: &Config,
+    game_id: u32,
+    uri: String,
+    plugin_env: ResolvedPluginEnv,
+    events: mpsc::UnboundedSender<GameEvent>,
+) -> Result<GameHandle, RikoError> {
     if !cfg.paths.vortex_exe.exists() {
-        eprintln!("{} Vortex.exe not found at {}", "[ERROR]".red(), cfg.paths.vortex_exe.display());
-        eprintln!("  Run {} first.", "tempest setup".cyan());
-        return;
+        return Err(RikoError::Setup(format!(
+            "Vortex.exe not found at {}; run setup first",
+            cfg.paths.vortex_exe.display()
+        )));
     }
 
-    let game_id = crate::uri::parse_vortex_uri(&uri)
-        .map(|(id, _)| id.to_string())
-        .unwrap_or_else(|| "?".to_string());
+    let mut receiver = process::ProcessManager::new();
+    receiver.ensure_receiver(cfg);
 
-    let use_gamemode = cfg.launcher.use_gamemode && which::which("gamemoderun").is_ok();
-    println!("{} Launching Vortex for game {} [{}]...",
-        "[INFO]".cyan(), game_id, perf_summary(&cfg, use_gamemode).bold());
-    tracing::debug!("Launch URI: {}", uri);
-
-    let mut pm = process::ProcessManager::new();
-    pm.ensure_receiver(&cfg);
-
-    let mut cmd = build_wine_command(&cfg, &uri, use_gamemode);
+    let sidecars = plugin_env.sidecars.clone();
+    let mut cmd =
+        tokio::process::Command::from(crate::platform::build_launch_command(cfg, &uri, &plugin_env));
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("{} Failed to launch Wine: {}", "[ERROR]".red(), e);
-            eprintln!("  Is Wine installed? Try {} for diagnostics.", "tempest doctor".cyan());
-            return;
-        }
+    let mut child = cmd.spawn().map_err(|e| {
+        RikoError::Wine(format!(
+            "failed to launch (is {} installed?): {e}",
+            cfg.wine.binary
+        ))
+    })?;
+
+    let pid = child.id().unwrap_or_default();
+    let started_at = Utc::now();
+    let session = GameSession {
+        game_id,
+        pid,
+        started_at,
     };
+    let (kill_tx, mut kill_rx) = oneshot::channel::<()>();
 
-    let child_id = child.id();
-    ctrlc::set_handler(move || {
-        unsafe { libc::kill(child_id as i32, libc::SIGTERM); }
-    }).ok();
+    events.send(GameEvent::Started { pid }).ok();
+    crate::playtime::record_launch(game_id);
 
-    let stderr = child.stderr.take().map(BufReader::new);
-    let stdout = child.stdout.take().map(BufReader::new);
     let filter = cfg.launcher.filter_wine_noise;
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
 
-    let stderr_handle = std::thread::spawn(move || {
-        if let Some(reader) = stderr {
-            for line in reader.lines().map_while(Result::ok) {
-                if filter && is_noise(&line) { continue; }
-                eprintln!("{}", line);
-            }
-        }
-    });
-
-    let stdout_handle = std::thread::spawn(move || {
-        if let Some(reader) = stdout {
-            for line in reader.lines().map_while(Result::ok) {
-                if filter && is_noise(&line) { continue; }
-                println!("{}", line);
-            }
-        }
-    });
-
-    let optim_handle = if crate::plugin::installed("vortex-optim") {
-        crate::plugin::binary_path("vortex-optim").map(|path| {
-            println!("{} Starting vortex-optim...", "[INFO]".cyan());
-            std::thread::spawn(move || {
-                std::thread::sleep(std::time::Duration::from_secs(10));
-                match std::process::Command::new(&path).spawn() {
-                    Ok(mut c) => {
-                        tracing::debug!("vortex-optim PID {}", c.id());
-                        let _ = c.wait();
-                    }
-                    Err(e) => tracing::warn!("vortex-optim failed: {}", e),
+    if let Some(out) = stdout {
+        let tx = events.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(out).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if filter && is_noise(&line) {
+                    continue;
                 }
-            })
-        })
-    } else {
-        None
-    };
-
-    let status = child.wait().unwrap_or_else(|_| std::process::exit(1));
-    stderr_handle.join().ok();
-    stdout_handle.join().ok();
-    if let Some(h) = optim_handle { h.join().ok(); }
-
-    drop(pm);
-
-    match status.code() {
-        Some(0) => println!("{} Game exited cleanly.", "[DONE]".green()),
-        Some(code) => {
-            eprintln!("{} Wine exited with code {}.", "[WARN]".yellow(), code);
-            eprintln!("  Run {} for diagnostics.", "tempest doctor".cyan());
-        }
-        None => {
-            eprintln!("{} Wine process was terminated by a signal.", "[WARN]".yellow());
-            eprintln!("  This may indicate a crash. Check Wine compatibility.");
-        }
+                tx.send(GameEvent::Log {
+                    line,
+                    is_stderr: false,
+                })
+                .ok();
+            }
+        });
     }
+
+    if let Some(err) = stderr {
+        let tx = events.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(err).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if filter && is_noise(&line) {
+                    continue;
+                }
+                tx.send(GameEvent::Log {
+                    line,
+                    is_stderr: true,
+                })
+                .ok();
+            }
+        });
+    }
+
+    for sidecar in sidecars {
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(sidecar.delay_secs)).await;
+            match tokio::process::Command::new(&sidecar.path)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+            {
+                Ok(mut child) => {
+                    child.wait().await.ok();
+                }
+                Err(e) => tracing::warn!("sidecar {} failed: {}", sidecar.path.display(), e),
+            }
+        });
+    }
+
+    tokio::spawn(async move {
+        let status = tokio::select! {
+            status = child.wait() => status,
+            _ = &mut kill_rx => {
+                terminate_child(&mut child, pid).await;
+                child.wait().await
+            }
+        };
+        drop(receiver);
+        let duration_secs = (Utc::now() - started_at).num_seconds().max(0) as u64;
+        crate::playtime::add_seconds(game_id, duration_secs);
+        events
+            .send(GameEvent::Exited {
+                code: status.ok().and_then(|s| s.code()),
+                duration_secs,
+            })
+            .ok();
+    });
+
+    Ok(GameHandle {
+        session,
+        kill: kill_tx,
+    })
+}
+
+#[cfg(unix)]
+async fn terminate_child(child: &mut tokio::process::Child, pid: u32) {
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+    let graceful =
+        tokio::time::timeout(std::time::Duration::from_secs(10), child.wait()).await;
+    if graceful.is_err() {
+        child.kill().await.ok();
+    }
+}
+
+#[cfg(windows)]
+async fn terminate_child(child: &mut tokio::process::Child, _pid: u32) {
+    child.kill().await.ok();
 }

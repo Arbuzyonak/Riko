@@ -8,6 +8,8 @@ pub struct Config {
     #[serde(default)]
     pub auth: AuthConfig,
     #[serde(default)]
+    pub accounts: Vec<StoredAccount>,
+    #[serde(default)]
     pub paths: PathConfig,
     #[serde(default)]
     pub wine: WineConfig,
@@ -23,6 +25,12 @@ pub struct Config {
 pub struct AuthConfig {
     pub session_token: Option<String>,
     pub username: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct StoredAccount {
+    pub username: String,
+    pub session_token: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -202,6 +210,24 @@ impl Config {
             cfg.auth.session_token = Some(decrypted);
         }
 
+        for account in &mut cfg.accounts {
+            if let Some(decrypted) = crate::crypto::decrypt(&account.session_token) {
+                account.session_token = decrypted;
+            }
+        }
+
+        if let (Some(username), Some(token)) = (&cfg.auth.username, &cfg.auth.session_token)
+            && !cfg
+                .accounts
+                .iter()
+                .any(|a| a.username.eq_ignore_ascii_case(username))
+        {
+            cfg.accounts.push(StoredAccount {
+                username: username.clone(),
+                session_token: token.clone(),
+            });
+        }
+
         cfg
     }
 
@@ -212,6 +238,12 @@ impl Config {
             && crate::crypto::decrypt(token).is_none()
         {
             cloned.auth.session_token = Some(crate::crypto::encrypt(token));
+        }
+
+        for account in &mut cloned.accounts {
+            if crate::crypto::decrypt(&account.session_token).is_none() {
+                account.session_token = crate::crypto::encrypt(&account.session_token);
+            }
         }
 
         let dir = Self::config_dir();

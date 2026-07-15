@@ -67,6 +67,8 @@ pub fn run() {
             commands::plugins::remove_plugin,
             commands::plugins::set_plugin_enabled,
             commands::plugins::get_game_plugin_overrides,
+            commands::doctor::run_doctor,
+            commands::doctor::apply_fix,
         ])
         .run(tauri::generate_context!())
         .expect("error while running riko-launcher");

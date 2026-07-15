@@ -1,5 +1,5 @@
 use crate::config::Config;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::net::TcpStream;
 use std::time::Duration;
 
@@ -12,14 +12,14 @@ pub struct CheckResult {
     pub fix: Option<FixAction>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FixAction {
     pub label: String,
     #[serde(flatten)]
     pub kind: FixKind,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum FixKind {
     Command { shell: String },

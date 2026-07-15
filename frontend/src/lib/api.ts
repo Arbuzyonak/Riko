@@ -157,6 +157,20 @@ export const switchAccount = (username: string) =>
 export const removeAccount = (username: string) =>
   invoke<AccountView[]>("remove_account", { username });
 
+export interface LaunchOverrides {
+  wine_binary: string | null;
+  use_esync: boolean | null;
+  use_fsync: boolean | null;
+  use_gamemode: boolean | null;
+  env: Record<string, string>;
+}
+
+export const getLaunchOverrides = (gameId: number) =>
+  invoke<LaunchOverrides>("get_launch_overrides", { gameId });
+
+export const setLaunchOverrides = (gameId: number, overrides: LaunchOverrides) =>
+  invoke<void>("set_launch_overrides", { gameId, overrides });
+
 export const createShortcut = (gameId: number) =>
   invoke<string>("create_shortcut", { gameId });
 

@@ -2,12 +2,15 @@
   import {
     createShortcut,
     getGamePluginOverrides,
+    getLaunchOverrides,
     launchGame,
     listAccounts,
     listPlugins,
+    setLaunchOverrides,
     setPluginEnabled,
     stopGame,
     type AccountView,
+    type LaunchOverrides,
     type PerGamePlugins,
     type PluginInfo,
   } from "../lib/api";
@@ -32,6 +35,15 @@
   let heroBroken = $state(false);
   let accounts = $state<AccountView[]>([]);
   let showAccountMenu = $state(false);
+  let showLaunchOptions = $state(false);
+  let overridesDraft = $state<LaunchOverrides>({
+    wine_binary: null,
+    use_esync: null,
+    use_fsync: null,
+    use_gamemode: null,
+    env: {},
+  });
+  let envRows = $state<{ key: string; value: string }[]>([]);
   let plugins = $state<PluginInfo[]>([]);
   let overrides = $state<PerGamePlugins>({ enabled: [], disabled: [] });
   let pluginsLoadedFor = $state(0);
@@ -78,6 +90,7 @@
       pluginsLoadedFor = gameId;
       loadPlugins();
       loadStats();
+      loadOverrides();
       listAccounts()
         .then((a) => (accounts = a))
         .catch(() => {});
@@ -110,6 +123,35 @@
       toast(String(e), "error");
     } finally {
       busy = false;
+    }
+  }
+
+  type ToggleKey = "use_esync" | "use_fsync" | "use_gamemode";
+  const toggleRows: { key: ToggleKey; label: string }[] = [
+    { key: "use_esync", label: "esync" },
+    { key: "use_fsync", label: "fsync" },
+    { key: "use_gamemode", label: "GameMode" },
+  ];
+
+  async function loadOverrides() {
+    try {
+      overridesDraft = await getLaunchOverrides(gameId);
+      envRows = Object.entries(overridesDraft.env).map(([key, value]) => ({ key, value }));
+    } catch (e) {
+      toast(String(e), "error");
+    }
+  }
+
+  async function saveOverrides() {
+    const env: Record<string, string> = {};
+    for (const row of envRows) {
+      if (row.key.trim()) env[row.key.trim()] = row.value;
+    }
+    try {
+      await setLaunchOverrides(gameId, { ...overridesDraft, env });
+      toast("Launch options saved", "success");
+    } catch (e) {
+      toast(String(e), "error");
     }
   }
 
@@ -296,6 +338,96 @@
         </div>
       </div>
     {/if}
+
+    <div class="flex flex-col gap-2">
+      <button
+        class="flex w-fit items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
+        onclick={() => (showLaunchOptions = !showLaunchOptions)}
+      >
+        <svg
+          class="h-4 w-4 transition-transform {showLaunchOptions ? 'rotate-90' : ''}"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+        Launch options
+      </button>
+      {#if showLaunchOptions}
+        <div class="flex max-w-2xl flex-col gap-4 rounded-xl border border-edge bg-panel px-5 py-4">
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs font-medium text-zinc-400">Wine binary for this game</span>
+            <input
+              type="text"
+              placeholder="global default"
+              value={overridesDraft.wine_binary ?? ""}
+              oninput={(e) =>
+                (overridesDraft.wine_binary = e.currentTarget.value.trim() || null)}
+              class="rounded-lg border border-edge bg-surface px-3 py-2 text-sm text-white outline-none transition-colors focus:border-accent"
+            />
+          </label>
+
+          {#each toggleRows as row (row.key)}
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-zinc-200">{row.label}</span>
+              <div class="flex overflow-hidden rounded-lg border border-edge text-xs">
+                {#each [null, true, false] as option, i (i)}
+                  <button
+                    class="px-3 py-1.5 transition-colors {overridesDraft[row.key] === option
+                      ? 'bg-accent text-white'
+                      : 'text-zinc-400 hover:bg-panel-hover'}"
+                    onclick={() => (overridesDraft[row.key] = option)}
+                  >
+                    {option === null ? "Inherit" : option ? "On" : "Off"}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/each}
+
+          <div class="flex flex-col gap-2">
+            <span class="text-xs font-medium text-zinc-400">Extra environment variables</span>
+            {#each envRows as row, i (i)}
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="KEY"
+                  bind:value={row.key}
+                  class="w-40 rounded-lg border border-edge bg-surface px-3 py-1.5 font-mono text-xs text-white outline-none focus:border-accent"
+                />
+                <input
+                  type="text"
+                  placeholder="value"
+                  bind:value={row.value}
+                  class="flex-1 rounded-lg border border-edge bg-surface px-3 py-1.5 font-mono text-xs text-white outline-none focus:border-accent"
+                />
+                <button
+                  class="text-xs text-zinc-500 hover:text-danger"
+                  onclick={() => (envRows = envRows.filter((_, idx) => idx !== i))}
+                >
+                  ✕
+                </button>
+              </div>
+            {/each}
+            <button
+              class="w-fit text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+              onclick={() => (envRows = [...envRows, { key: "", value: "" }])}
+            >
+              + Add variable
+            </button>
+          </div>
+
+          <button
+            class="w-fit rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+            onclick={saveOverrides}
+          >
+            Save launch options
+          </button>
+        </div>
+      {/if}
+    </div>
 
     <div class="flex flex-col gap-2">
       <button

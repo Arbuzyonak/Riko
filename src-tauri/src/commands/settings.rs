@@ -1,4 +1,5 @@
 use crate::state::AppState;
+use riko_core::config::LaunchOverrides;
 use riko_core::RikoError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -104,4 +105,32 @@ pub async fn update_config(
     }
     cfg.save()?;
     Ok(view(&cfg))
+}
+
+#[tauri::command]
+pub async fn get_launch_overrides(
+    state: State<'_, AppState>,
+    game_id: u32,
+) -> Result<LaunchOverrides, RikoError> {
+    let cfg = state.config.read().await;
+    Ok(cfg
+        .launch_overrides
+        .get(&game_id.to_string())
+        .cloned()
+        .unwrap_or_default())
+}
+
+#[tauri::command]
+pub async fn set_launch_overrides(
+    state: State<'_, AppState>,
+    game_id: u32,
+    overrides: LaunchOverrides,
+) -> Result<(), RikoError> {
+    let mut cfg = state.config.write().await;
+    if overrides.is_empty() {
+        cfg.launch_overrides.remove(&game_id.to_string());
+    } else {
+        cfg.launch_overrides.insert(game_id.to_string(), overrides);
+    }
+    cfg.save()
 }

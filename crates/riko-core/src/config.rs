@@ -19,6 +19,32 @@ pub struct Config {
     pub plugins: PluginConfig,
     #[serde(default)]
     pub presence: PresenceConfig,
+    #[serde(default)]
+    pub launch_overrides: HashMap<String, LaunchOverrides>,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct LaunchOverrides {
+    #[serde(default)]
+    pub wine_binary: Option<String>,
+    #[serde(default)]
+    pub use_esync: Option<bool>,
+    #[serde(default)]
+    pub use_fsync: Option<bool>,
+    #[serde(default)]
+    pub use_gamemode: Option<bool>,
+    #[serde(default)]
+    pub env: HashMap<String, String>,
+}
+
+impl LaunchOverrides {
+    pub fn is_empty(&self) -> bool {
+        self.wine_binary.as_deref().is_none_or(str::is_empty)
+            && self.use_esync.is_none()
+            && self.use_fsync.is_none()
+            && self.use_gamemode.is_none()
+            && self.env.is_empty()
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -170,6 +196,26 @@ impl Config {
             cfg.save().ok();
         }
         copied
+    }
+
+    pub fn effective_for_game(&self, game_id: u32) -> Self {
+        let mut cfg = self.clone();
+        if let Some(overrides) = self.launch_overrides.get(&game_id.to_string()) {
+            if let Some(binary) = overrides.wine_binary.clone().filter(|b| !b.is_empty()) {
+                cfg.wine.binary = binary;
+            }
+            if let Some(v) = overrides.use_esync {
+                cfg.launcher.use_esync = v;
+            }
+            if let Some(v) = overrides.use_fsync {
+                cfg.launcher.use_fsync = v;
+            }
+            if let Some(v) = overrides.use_gamemode {
+                cfg.launcher.use_gamemode = v;
+            }
+            cfg.wine.env.extend(overrides.env.clone());
+        }
+        cfg
     }
 
     pub fn load() -> Self {

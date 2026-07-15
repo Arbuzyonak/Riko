@@ -1,6 +1,7 @@
 mod commands;
 mod events;
 mod state;
+mod tray;
 
 use state::AppState;
 use tauri::{AppHandle, Emitter, Manager};
@@ -14,10 +15,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                window.unminimize().ok();
-                window.set_focus().ok();
-            }
+            tray::show_main_window(app);
             handle_uris(app, argv);
         }))
         .plugin(tauri_plugin_deep_link::init())
@@ -26,6 +24,8 @@ pub fn run() {
         .setup(|app| {
             #[cfg(any(target_os = "linux", windows))]
             app.deep_link().register_all().ok();
+
+            tray::setup(app.handle()).ok();
 
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
@@ -105,11 +105,17 @@ pub fn run() {
             commands::playtime::get_playtime,
             commands::playtime::get_sessions,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                window.hide().ok();
+                api.prevent_close();
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running riko-launcher");
 }
 
-fn handle_uris(app: &AppHandle, args: Vec<String>) {
+pub(crate) fn handle_uris(app: &AppHandle, args: Vec<String>) {
     let mut args_iter = args.iter();
     while let Some(arg) = args_iter.next() {
         if let Some((game_id, token)) = riko_core::uri::parse_vortex_uri(arg) {

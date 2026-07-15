@@ -13,6 +13,7 @@ pub mod playtime;
 pub mod plugin;
 pub mod presence;
 pub mod progress;
+pub mod self_update;
 pub mod setup;
 pub mod shortcuts;
 pub mod updater;

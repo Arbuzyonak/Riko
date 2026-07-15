@@ -109,6 +109,7 @@ pub fn run() {
             commands::wine::list_wine_versions,
             commands::wine::install_wine_version,
             commands::wine::remove_wine_version,
+            commands::update::check_riko_update,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

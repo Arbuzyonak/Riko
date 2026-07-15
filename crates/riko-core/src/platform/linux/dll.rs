@@ -1,6 +1,5 @@
-use colored::Colorize;
+use crate::RikoError;
 use std::path::Path;
-use crate::TempestError;
 
 pub fn verify_dll(path: &Path) -> bool {
     if !path.exists() {
@@ -22,50 +21,33 @@ pub fn verify_dll(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-pub fn backup_dll(path: &Path) -> Result<(), TempestError> {
+pub fn backup_dll(path: &Path) -> Result<(), RikoError> {
     if path.exists() {
         let bak = path.with_extension("dll.bak");
         std::fs::copy(path, &bak)?;
-        tracing::debug!(
-            "Backed up {} -> {}",
-            path.display(),
-            bak.display()
-        );
+        tracing::debug!("backed up {} -> {}", path.display(), bak.display());
     }
     Ok(())
 }
 
-pub fn install_dll(src: &Path, dest: &Path) -> Result<(), TempestError> {
+pub fn install_dll(src: &Path, dest: &Path) -> Result<(), RikoError> {
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent)?;
     }
 
     if !verify_dll(src) {
-        return Err(TempestError::Other(format!(
+        return Err(RikoError::Other(format!(
             "{} does not appear to be a valid PE binary",
             src.display()
         )));
     }
 
-    if dest.exists() && !verify_dll(dest) {
-        println!(
-            "{} {} is not a valid PE binary, replacing anyway",
-            "[WARN]".yellow(),
-            dest.file_name().unwrap_or_default().to_string_lossy()
-        );
-    }
-
     backup_dll(dest)?;
     std::fs::copy(src, dest)?;
-    println!(
-        "{} {}",
-        "[PASS]".green(),
-        dest.file_name().unwrap_or_default().to_string_lossy()
-    );
     Ok(())
 }
 
-pub fn install_dlls_from(src_dir: &Path, dest_dir: &Path, dlls: &[&str]) -> Result<(), TempestError> {
+pub fn install_dlls_from(src_dir: &Path, dest_dir: &Path, dlls: &[&str]) -> Result<(), RikoError> {
     if !src_dir.exists() {
         return Ok(());
     }
@@ -98,7 +80,7 @@ pub fn set_dll_override(prefix: &Path, dll_name: &str, override_type: &str) -> b
         .map(|s| s.success())
         .unwrap_or(false);
     if ok {
-        tracing::debug!("DLL override: {} = {}", dll_name, override_type);
+        tracing::debug!("dll override: {} = {}", dll_name, override_type);
     }
     ok
 }

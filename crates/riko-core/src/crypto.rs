@@ -32,9 +32,12 @@ fn load_or_create_key() -> [u8; KEY_LEN] {
         std::fs::create_dir_all(parent).ok();
     }
 
-    use std::os::unix::fs::PermissionsExt;
     std::fs::write(&path, key).ok();
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).ok();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).ok();
+    }
 
     key
 }

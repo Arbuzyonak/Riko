@@ -10,7 +10,7 @@
   import SetupWizard from "./routes/SetupWizard.svelte";
   import Settings from "./routes/Settings.svelte";
   import Plugins from "./routes/Plugins.svelte";
-  import Placeholder from "./routes/Placeholder.svelte";
+  import Doctor from "./routes/Doctor.svelte";
   import { toast } from "./lib/stores/toast.svelte";
   import { initSessionEvents } from "./lib/stores/session.svelte";
   import { initProgressEvents } from "./lib/stores/progress.svelte";
@@ -51,7 +51,7 @@
       {:else if router.path === "/plugins"}
         <Plugins />
       {:else if router.path === "/doctor"}
-        <Placeholder title="Doctor" />
+        <Doctor />
       {:else if router.path === "/settings"}
         <Settings />
       {:else if router.path.startsWith("/game/")}

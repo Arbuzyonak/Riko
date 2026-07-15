@@ -142,6 +142,27 @@ export interface PerGamePlugins {
 export const getGamePluginOverrides = (gameId: number) =>
   invoke<PerGamePlugins>("get_game_plugin_overrides", { gameId });
 
+export type FixKind =
+  | { kind: "command"; shell: string }
+  | { kind: "run_setup" }
+  | { kind: "run_login" }
+  | { kind: "run_update" }
+  | { kind: "register_uri" };
+
+export type FixAction = { label: string } & FixKind;
+
+export interface CheckResult {
+  id: string;
+  name: string;
+  passed: boolean;
+  detail: string;
+  fix: FixAction | null;
+}
+
+export const runDoctor = () => invoke<CheckResult[]>("run_doctor");
+
+export const applyFix = (fix: FixKind) => invoke<void>("apply_fix", { fix });
+
 export interface ProgressEvent {
   type: "stage_started" | "stage_progress" | "stage_log" | "stage_finished";
   stage: string;

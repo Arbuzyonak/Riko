@@ -13,11 +13,12 @@ pub fn run() {
     }
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 window.unminimize().ok();
                 window.set_focus().ok();
             }
+            handle_uris(app, argv);
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
@@ -83,6 +84,7 @@ pub fn run() {
             commands::auth::remove_account,
             commands::games::list_games,
             commands::games::get_game_stats,
+            commands::games::create_shortcut,
             commands::friends::get_friends,
             commands::launch::launch_game,
             commands::launch::stop_game,
@@ -108,8 +110,9 @@ pub fn run() {
 }
 
 fn handle_uris(app: &AppHandle, args: Vec<String>) {
-    for arg in args {
-        if let Some((game_id, token)) = riko_core::uri::parse_vortex_uri(&arg) {
+    let mut args_iter = args.iter();
+    while let Some(arg) = args_iter.next() {
+        if let Some((game_id, token)) = riko_core::uri::parse_vortex_uri(arg) {
             let uri = format!("vortex://play?game={game_id}&token={token}");
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
@@ -117,6 +120,35 @@ fn handle_uris(app: &AppHandle, args: Vec<String>) {
                 let cfg = app.state::<AppState>().config.read().await.clone();
                 if let Err(e) = commands::launch::spawn_game(&app, cfg, game_id, uri).await {
                     app.emit("game://launch-error", e.to_string()).ok();
+                }
+            });
+            return;
+        }
+        if arg == "--launch"
+            && let Some(game_id) = args_iter.next().and_then(|v| v.parse::<u32>().ok())
+        {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                app.emit("nav://game", game_id).ok();
+                let state = app.state::<AppState>();
+                let (token, cfg) = {
+                    let cfg = state.config.read().await;
+                    (cfg.auth.session_token.clone(), cfg.clone())
+                };
+                let Some(token) = token else {
+                    app.emit("game://launch-error", "not logged in".to_string()).ok();
+                    return;
+                };
+                match riko_core::auth::get_play_uri(&token, game_id).await {
+                    Ok(uri) => {
+                        if let Err(e) = commands::launch::spawn_game(&app, cfg, game_id, uri).await
+                        {
+                            app.emit("game://launch-error", e.to_string()).ok();
+                        }
+                    }
+                    Err(e) => {
+                        app.emit("game://launch-error", e.to_string()).ok();
+                    }
                 }
             });
             return;

@@ -167,17 +167,19 @@
 
 <div class="flex flex-col">
   <div
-    class="relative flex h-56 items-end overflow-hidden px-8 pb-6"
+    class="relative flex h-56 items-end px-8 pb-6"
     style="background: linear-gradient(160deg, hsl({hue}, 45%, 24%), hsl({(hue + 40) %
       360}, 50%, 10%) 70%)"
   >
     {#if game?.thumbnail_url && !heroBroken}
-      <img
-        src={game.thumbnail_url}
-        alt=""
-        class="absolute inset-0 h-full w-full object-cover opacity-30 blur-sm"
-        onerror={() => (heroBroken = true)}
-      />
+      <div class="absolute inset-0 overflow-hidden">
+        <img
+          src={game.thumbnail_url}
+          alt=""
+          class="h-full w-full object-cover opacity-30 blur-sm"
+          onerror={() => (heroBroken = true)}
+        />
+      </div>
     {/if}
     <button
       class="absolute top-5 left-6 flex items-center gap-1.5 text-sm text-zinc-300 transition-colors hover:text-white"
@@ -264,7 +266,7 @@
             </button>
             {#if showAccountMenu}
               <div
-                class="absolute top-full right-0 z-10 mt-1.5 flex w-48 flex-col overflow-hidden rounded-lg border border-edge bg-panel py-1 shadow-xl"
+                class="absolute top-full right-0 z-30 mt-1.5 flex w-48 flex-col overflow-hidden rounded-lg border border-edge bg-panel py-1 shadow-xl"
               >
                 {#each accounts as account (account.username)}
                   <button

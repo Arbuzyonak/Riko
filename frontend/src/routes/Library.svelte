@@ -1,11 +1,16 @@
 <script lang="ts">
   import { gamesState, loadGames } from "../lib/stores/games.svelte";
+  import { loadPlaytime } from "../lib/stores/playtime.svelte";
   import GameCard from "../lib/components/GameCard.svelte";
 
   $effect(() => {
     if (!gamesState.loaded && !gamesState.loading) {
       loadGames(false);
     }
+  });
+
+  $effect(() => {
+    loadPlaytime(true);
   });
 </script>
 

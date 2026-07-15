@@ -92,6 +92,9 @@ pub async fn update_config(
     }
     if let Some(v) = patch.presence_enabled {
         cfg.presence.enabled = v;
+        if !v {
+            state.presence.send(riko_core::presence::PresenceCmd::Idle);
+        }
     }
     cfg.save()?;
     Ok(view(&cfg))

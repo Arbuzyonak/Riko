@@ -1,5 +1,6 @@
 use crate::state::AppState;
 use riko_core::launcher::{GameEvent, GameSession};
+use riko_core::presence::PresenceCmd;
 use riko_core::RikoError;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -64,8 +65,21 @@ pub async fn spawn_game(
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let handle = riko_core::launcher::launch(&cfg, game_id, uri, plugin_env, tx).await?;
     let pid = handle.session.pid;
+    let started_at_unix = handle.session.started_at.timestamp();
     sessions.insert(game_id, handle);
     drop(sessions);
+
+    if cfg.presence.enabled {
+        let game_name = riko_core::games::load_cached()
+            .into_iter()
+            .find(|g| g.id == game_id)
+            .map(|g| g.name)
+            .unwrap_or_else(|| format!("Game #{game_id}"));
+        state.presence.send(PresenceCmd::Playing {
+            game_name,
+            started_at_unix,
+        });
+    }
 
     let app = app.clone();
     tokio::spawn(async move {
@@ -95,6 +109,9 @@ pub async fn spawn_game(
                         if exited {
                             let state = app.state::<AppState>();
                             state.sessions.lock().await.remove(&game_id);
+                            if state.sessions.lock().await.is_empty() {
+                                state.presence.send(PresenceCmd::Idle);
+                            }
                         }
                     }
                 }

@@ -149,16 +149,25 @@ pub async fn launch(
     }
 
     tokio::spawn(async move {
-        let status = tokio::select! {
-            status = child.wait() => status,
-            _ = &mut kill_rx => {
-                terminate_child(&mut child, pid).await;
-                child.wait().await
+        let mut checkpointed_secs: u64 = 0;
+        let mut checkpoint = tokio::time::interval(std::time::Duration::from_secs(60));
+        checkpoint.tick().await;
+        let status = loop {
+            tokio::select! {
+                status = child.wait() => break status,
+                _ = &mut kill_rx => {
+                    terminate_child(&mut child, pid).await;
+                    break child.wait().await;
+                }
+                _ = checkpoint.tick() => {
+                    crate::playtime::add_seconds(game_id, 60);
+                    checkpointed_secs += 60;
+                }
             }
         };
         drop(receiver);
         let duration_secs = (Utc::now() - started_at).num_seconds().max(0) as u64;
-        crate::playtime::add_seconds(game_id, duration_secs);
+        crate::playtime::add_seconds(game_id, duration_secs.saturating_sub(checkpointed_secs));
         events
             .send(GameEvent::Exited {
                 code: status.ok().and_then(|s| s.code()),

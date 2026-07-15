@@ -3,12 +3,14 @@
   import { launchGame } from "../api";
   import { navigate } from "../router.svelte";
   import { isRunning } from "../stores/session.svelte";
+  import { formatPlaytime, playtimeState } from "../stores/playtime.svelte";
   import { toast } from "../stores/toast.svelte";
 
   let { game }: { game: Game } = $props();
 
   const hue = $derived((game.id * 137) % 360);
   const running = $derived(isRunning(game.id));
+  const playtime = $derived(playtimeState.entries[game.id]?.total_secs ?? 0);
 
   async function play(event: MouseEvent) {
     event.stopPropagation();
@@ -65,8 +67,11 @@
   {/if}
   <div class="flex flex-col gap-0.5 px-4 py-3">
     <span class="truncate font-medium text-white">{game.name}</span>
-    <span class="truncate text-xs text-zinc-500">
-      {game.creator ?? `Game #${game.id}`}
+    <span class="flex items-center justify-between gap-2 text-xs text-zinc-500">
+      <span class="truncate">{game.creator ?? `Game #${game.id}`}</span>
+      {#if playtime > 0}
+        <span class="shrink-0 tabular-nums">{formatPlaytime(playtime)}</span>
+      {/if}
     </span>
   </div>
 </div>

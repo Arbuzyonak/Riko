@@ -1,4 +1,5 @@
 use riko_core::launcher::GameHandle;
+use riko_core::presence::PresenceHandle;
 use riko_core::Config;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
@@ -9,6 +10,7 @@ pub struct AppState {
     pub sessions: Mutex<HashMap<u32, GameHandle>>,
     pub setup_running: AtomicBool,
     pub migrated_from_tempest: bool,
+    pub presence: PresenceHandle,
 }
 
 impl AppState {
@@ -24,6 +26,7 @@ impl AppState {
             sessions: Mutex::new(HashMap::new()),
             setup_running: AtomicBool::new(false),
             migrated_from_tempest: migrated,
+            presence: PresenceHandle::spawn(),
         }
     }
 }

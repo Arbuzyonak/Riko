@@ -10,6 +10,7 @@ pub mod net;
 pub mod platform;
 pub mod playtime;
 pub mod plugin;
+pub mod presence;
 pub mod progress;
 pub mod setup;
 pub mod updater;

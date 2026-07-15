@@ -1,0 +1,11 @@
+[plugin]
+name = "replay-buffer"
+version = "1.0.0"
+description = "Rolling 60-second replay buffer via gpu-screen-recorder; save a clip with: pkill -USR1 -f gpu-screen-recorder (requires the gpu-screen-recorder package)"
+type = "binary"
+platforms = ["linux"]
+
+[binary]
+entrypoint = "replay.sh"
+run_after_launch = true
+delay_secs = 10

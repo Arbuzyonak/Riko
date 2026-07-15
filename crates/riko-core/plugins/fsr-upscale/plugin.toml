@@ -1,0 +1,10 @@
+[plugin]
+name = "fsr-upscale"
+version = "1.0.0"
+description = "AMD FidelityFX Super Resolution upscaling for lower render resolutions (wine-staging/Proton builds)"
+type = "env-only"
+platforms = ["linux"]
+
+[env]
+WINE_FULLSCREEN_FSR = "1"
+WINE_FULLSCREEN_FSR_STRENGTH = { default = "2" }

@@ -81,6 +81,12 @@ pub async fn spawn_game(
         });
     }
 
+    if cfg.launcher.minimize_while_playing
+        && let Some(window) = app.get_webview_window("main")
+    {
+        window.minimize().ok();
+    }
+
     let app = app.clone();
     tokio::spawn(async move {
         let mut buf: Vec<GameEvent> = Vec::with_capacity(64);
@@ -111,6 +117,11 @@ pub async fn spawn_game(
                             state.sessions.lock().await.remove(&game_id);
                             if state.sessions.lock().await.is_empty() {
                                 state.presence.send(PresenceCmd::Idle);
+                                if let Some(window) = app.get_webview_window("main") {
+                                    window.unminimize().ok();
+                                    window.show().ok();
+                                    window.set_focus().ok();
+                                }
                             }
                         }
                     }

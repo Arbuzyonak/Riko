@@ -11,6 +11,7 @@
   import { navigate, routeParam } from "../lib/router.svelte";
   import { gamesState, loadGames } from "../lib/stores/games.svelte";
   import { formatPlaytime, loadPlaytime, playtimeState } from "../lib/stores/playtime.svelte";
+  import { formatVisits, loadStats, statsState } from "../lib/stores/stats.svelte";
   import { sessionState, isRunning } from "../lib/stores/session.svelte";
   import { toast } from "../lib/stores/toast.svelte";
   import LogViewer from "../lib/components/LogViewer.svelte";
@@ -21,6 +22,7 @@
   const logs = $derived(sessionState.logs[gameId] ?? []);
   const hue = $derived((gameId * 137) % 360);
   const playtime = $derived(playtimeState.entries[gameId]);
+  const stats = $derived(statsState.entries[gameId]);
 
   let busy = $state(false);
   let showLogs = $state(false);
@@ -70,6 +72,7 @@
     if (gameId && pluginsLoadedFor !== gameId) {
       pluginsLoadedFor = gameId;
       loadPlugins();
+      loadStats();
     }
   });
 
@@ -131,6 +134,17 @@
         </h1>
         <p class="mt-1 text-sm text-zinc-300">
           {game?.creator ? `by ${game.creator}` : `Game #${gameId}`}
+          {#if stats}
+            <span class="ml-2 text-zinc-400 tabular-nums">
+              {formatVisits(stats.visits)} {stats.visits === 1 ? "visit" : "visits"}
+            </span>
+            {#if stats.active > 0}
+              <span class="ml-2 inline-flex items-center gap-1.5 text-ok">
+                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
+                {stats.active} playing
+              </span>
+            {/if}
+          {/if}
           {#if playtime && playtime.total_secs > 0}
             <span class="ml-2 text-zinc-400">
               {formatPlaytime(playtime.total_secs)} played · {playtime.launches}

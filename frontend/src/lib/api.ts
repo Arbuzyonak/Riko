@@ -80,6 +80,7 @@ export interface ConfigView {
   use_fsync: boolean;
   use_gamemode: boolean;
   shader_cache: boolean;
+  minimize_while_playing: boolean;
   presence_enabled: boolean;
   wine_prefix: string;
   vortex_exe: string;
@@ -95,6 +96,7 @@ export type ConfigPatch = Partial<{
   use_fsync: boolean;
   use_gamemode: boolean;
   shader_cache: boolean;
+  minimize_while_playing: boolean;
   presence_enabled: boolean;
 }>;
 
@@ -141,6 +143,14 @@ export interface PerGamePlugins {
 
 export const getGamePluginOverrides = (gameId: number) =>
   invoke<PerGamePlugins>("get_game_plugin_overrides", { gameId });
+
+export interface GameStats {
+  visits: number;
+  active: number;
+}
+
+export const getGameStats = () =>
+  invoke<Record<number, GameStats>>("get_game_stats");
 
 export interface PlaytimeEntry {
   total_secs: number;

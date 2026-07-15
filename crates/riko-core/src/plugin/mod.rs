@@ -337,4 +337,25 @@ mod tests {
         assert_eq!(resolved.env.get("mesa_glthread").map(String::as_str), Some("true"));
         assert!(resolved.env["DXVK_CONFIG"].contains("dxvk.enableAsync=true"));
     }
+
+    #[test]
+    fn env_only_builtins_resolve() {
+        let dir = std::env::temp_dir();
+        let mut resolved = ResolvedPluginEnv::default();
+        apply_manifest(&mut resolved, &builtin::manifest_for("mangohud").unwrap(), &dir);
+        assert_eq!(resolved.env.get("MANGOHUD").map(String::as_str), Some("1"));
+        apply_manifest(&mut resolved, &builtin::manifest_for("fsr-upscale").unwrap(), &dir);
+        assert_eq!(
+            resolved.env.get("WINE_FULLSCREEN_FSR").map(String::as_str),
+            Some("1")
+        );
+        apply_manifest(&mut resolved, &builtin::manifest_for("vkbasalt").unwrap(), &dir);
+        assert_eq!(
+            resolved.env.get("VKBASALT_CONFIG_FILE").map(String::as_str),
+            Some(format!("{}/vkBasalt.conf", dir.display()).as_str())
+        );
+        apply_manifest(&mut resolved, &builtin::manifest_for("low-spec-mode").unwrap(), &dir);
+        assert!(resolved.env["DXVK_CONFIG"].contains("dxvk.numCompilerThreads=2"));
+        assert!(resolved.env["DXVK_CONFIG"].contains("dxvk.maxFrameLatency=1"));
+    }
 }

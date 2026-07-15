@@ -1,0 +1,10 @@
+[plugin]
+name = "mangohud"
+version = "1.0.0"
+description = "In-game FPS, frametime, CPU and GPU overlay via MangoHud (requires the mangohud package)"
+type = "env-only"
+platforms = ["linux"]
+
+[env]
+MANGOHUD = "1"
+MANGOHUD_CONFIG = { default = "fps,frametime,cpu_stats,gpu_stats,ram,position=top-left" }

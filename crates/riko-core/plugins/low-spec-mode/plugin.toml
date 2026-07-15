@@ -1,0 +1,13 @@
+[plugin]
+name = "low-spec-mode"
+version = "1.0.0"
+description = "Conservative DXVK and Mesa tuning for weaker hardware"
+type = "env-only"
+platforms = ["linux"]
+
+[env]
+MESA_NO_ERROR = "1"
+WINE_LARGE_ADDRESS_AWARE = "1"
+
+[env_append]
+DXVK_CONFIG = { separator = ",", values = ["dxvk.numCompilerThreads=2", "dxvk.maxFrameLatency=1"] }

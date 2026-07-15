@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::{RikoError, VORTEX_BASE};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Game {
@@ -61,6 +62,48 @@ fn parse_game(body: &serde_json::Value) -> Option<Game> {
     })
 }
 
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct GameStats {
+    pub visits: u64,
+    pub active: u64,
+}
+
+pub async fn fetch_stats(token: &str) -> Result<HashMap<u32, GameStats>, RikoError> {
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{VORTEX_BASE}/api/game-stats"))
+        .header("Cookie", format!("session_token={token}"))
+        .send()
+        .await?
+        .error_for_status()?;
+    let body: serde_json::Value = resp.json().await?;
+    Ok(parse_stats(&body))
+}
+
+fn parse_stats(body: &serde_json::Value) -> HashMap<u32, GameStats> {
+    let number = |v: &serde_json::Value, key: &str| {
+        v.get(key)
+            .and_then(|n| n.as_u64().or_else(|| n.as_f64().map(|f| f.max(0.0) as u64)))
+            .unwrap_or(0)
+    };
+    body.as_object()
+        .map(|entries| {
+            entries
+                .iter()
+                .filter_map(|(id, value)| {
+                    Some((
+                        id.parse::<u32>().ok()?,
+                        GameStats {
+                            visits: number(value, "visits"),
+                            active: number(value, "active"),
+                        },
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn cache_path() -> std::path::PathBuf {
     Config::data_dir().join("games.json")
 }
@@ -110,6 +153,30 @@ mod tests {
         assert!(parse_game(&serde_json::json!({"id": 5})).is_none());
         assert!(parse_game(&serde_json::json!({"name": "x"})).is_none());
         assert!(parse_game(&serde_json::json!({"id": 5, "name": ""})).is_none());
+    }
+
+    #[test]
+    fn parses_stats_map() {
+        let body = serde_json::json!({
+            "1": {"visits": 5120, "active": 3},
+            "3": {"visits": 900},
+            "bogus": {"visits": 1},
+        });
+        let stats = parse_stats(&body);
+        assert_eq!(stats.len(), 2);
+        assert_eq!(stats[&1].visits, 5120);
+        assert_eq!(stats[&1].active, 3);
+        assert_eq!(stats[&3].active, 0);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_game_stats() {
+        let cfg = Config::load();
+        let token = cfg.auth.session_token.expect("no stored session");
+        let stats = fetch_stats(&token).await.unwrap();
+        assert!(!stats.is_empty());
+        println!("{} games have stats; first: {:?}", stats.len(), stats.iter().next());
     }
 
     #[test]

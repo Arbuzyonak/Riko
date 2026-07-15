@@ -150,13 +150,23 @@ mod tests {
 
     #[test]
     fn parses_builtin_manifests() {
-        for contents in [
-            include_str!("../../plugins/fps-unlocker/plugin.toml"),
-            include_str!("../../plugins/vortex-optim/plugin.toml"),
-        ] {
-            let manifest = parse(contents).unwrap();
-            assert!(!manifest.plugin.name.is_empty());
-            assert!(manifest.build.is_some());
+        for builtin in crate::plugin::builtin::BUILTINS {
+            let manifest = crate::plugin::builtin::manifest_for(builtin.name)
+                .unwrap_or_else(|| panic!("built-in '{}' has an invalid manifest", builtin.name));
+            assert_eq!(manifest.plugin.name, builtin.name);
+            if matches!(manifest.plugin.kind, PluginKind::Binary) {
+                let entrypoint = &manifest.binary.as_ref().unwrap().entrypoint;
+                let shipped = builtin.files.iter().any(|(file, _)| file == entrypoint);
+                let built = manifest
+                    .build
+                    .as_ref()
+                    .is_some_and(|b| b.artifacts.iter().any(|a| a == entrypoint));
+                assert!(
+                    shipped || built,
+                    "built-in '{}' neither ships nor builds its entrypoint '{entrypoint}'",
+                    builtin.name
+                );
+            }
         }
     }
 

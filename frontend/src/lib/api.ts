@@ -39,3 +39,78 @@ export const stopGame = (gameId: number) =>
 
 export const getRunningSessions = () =>
   invoke<GameSession[]>("get_running_sessions");
+
+export type SetupStepId =
+  | "install_wine"
+  | "create_prefix"
+  | "install_winetricks_components"
+  | "install_gamemode"
+  | "install_dxvk"
+  | "install_vkd3d"
+  | "download_vortex"
+  | "register_uri";
+
+export interface PlannedStep {
+  step: SetupStepId;
+  label: string;
+  description: string;
+  status: "done" | "needed" | "optional";
+  manual_command: string | null;
+}
+
+export interface SetupPlan {
+  steps: PlannedStep[];
+}
+
+export const getSetupPlan = () => invoke<SetupPlan>("get_setup_plan");
+
+export const runSetupStep = (step: SetupStepId) =>
+  invoke<void>("run_setup_step", { step });
+
+export const uninstallRiko = () => invoke<void>("uninstall_riko");
+
+export interface ConfigView {
+  username: string | null;
+  has_session: boolean;
+  wine_binary: string;
+  wine_env: Record<string, string>;
+  filter_wine_noise: boolean;
+  auto_update: boolean;
+  use_esync: boolean;
+  use_fsync: boolean;
+  use_gamemode: boolean;
+  shader_cache: boolean;
+  presence_enabled: boolean;
+  wine_prefix: string;
+  vortex_exe: string;
+  log_file: string;
+}
+
+export type ConfigPatch = Partial<{
+  wine_binary: string;
+  wine_env: Record<string, string>;
+  filter_wine_noise: boolean;
+  auto_update: boolean;
+  use_esync: boolean;
+  use_fsync: boolean;
+  use_gamemode: boolean;
+  shader_cache: boolean;
+  presence_enabled: boolean;
+}>;
+
+export const getConfig = () => invoke<ConfigView>("get_config");
+
+export const updateConfig = (patch: ConfigPatch) =>
+  invoke<ConfigView>("update_config", { patch });
+
+export interface ProgressEvent {
+  type: "stage_started" | "stage_progress" | "stage_log" | "stage_finished";
+  stage: string;
+  label?: string;
+  done?: number;
+  total?: number | null;
+  level?: "info" | "warn" | "error";
+  line?: string;
+  ok?: boolean;
+  detail?: string | null;
+}

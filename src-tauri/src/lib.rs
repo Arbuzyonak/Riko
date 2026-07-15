@@ -1,4 +1,5 @@
 mod commands;
+mod events;
 mod state;
 
 use state::AppState;
@@ -31,6 +32,19 @@ pub fn run() {
             });
 
             handle_uris(app.handle(), std::env::args().collect());
+
+            #[cfg(debug_assertions)]
+            if let Ok(route) = std::env::var("RIKO_START_ROUTE") {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                    if let Some(window) = handle.get_webview_window("main") {
+                        window
+                            .eval(format!("window.location.hash = '{route}'"))
+                            .ok();
+                    }
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -41,6 +55,11 @@ pub fn run() {
             commands::launch::launch_game,
             commands::launch::stop_game,
             commands::launch::get_running_sessions,
+            commands::setup::get_setup_plan,
+            commands::setup::run_setup_step,
+            commands::setup::uninstall_riko,
+            commands::settings::get_config,
+            commands::settings::update_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running riko-launcher");

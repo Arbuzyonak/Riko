@@ -1,11 +1,13 @@
 use riko_core::launcher::GameHandle;
 use riko_core::Config;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use tokio::sync::{Mutex, RwLock};
 
 pub struct AppState {
     pub config: RwLock<Config>,
     pub sessions: Mutex<HashMap<u32, GameHandle>>,
+    pub setup_running: AtomicBool,
     pub migrated_from_tempest: bool,
 }
 
@@ -20,6 +22,7 @@ impl AppState {
         Self {
             config: RwLock::new(config),
             sessions: Mutex::new(HashMap::new()),
+            setup_running: AtomicBool::new(false),
             migrated_from_tempest: migrated,
         }
     }

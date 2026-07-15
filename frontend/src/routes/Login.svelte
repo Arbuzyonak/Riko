@@ -1,7 +1,7 @@
 <script lang="ts">
   import { login } from "../lib/api";
   import { navigate } from "../lib/router.svelte";
-  import { refreshStatus } from "../lib/stores/app.svelte";
+  import { appState, refreshStatus } from "../lib/stores/app.svelte";
   import { toast } from "../lib/stores/toast.svelte";
 
   let username = $state("");
@@ -18,7 +18,7 @@
       const user = await login(username, password);
       await refreshStatus();
       toast(`Logged in as ${user}`, "success");
-      navigate("/");
+      navigate(appState.status?.setup_needed ? "/setup" : "/");
     } catch (e) {
       error = String(e);
     } finally {

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/riko-core"]
+members = ["crates/riko-core", "src-tauri"]
 
 [profile.release]
 opt-level = 3

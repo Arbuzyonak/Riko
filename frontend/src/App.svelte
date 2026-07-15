@@ -6,10 +6,13 @@
   import Toasts from "./lib/components/Toasts.svelte";
   import Library from "./routes/Library.svelte";
   import Login from "./routes/Login.svelte";
+  import GameDetail from "./routes/GameDetail.svelte";
   import Placeholder from "./routes/Placeholder.svelte";
   import { toast } from "./lib/stores/toast.svelte";
+  import { initSessionEvents } from "./lib/stores/session.svelte";
 
   onMount(async () => {
+    await initSessionEvents();
     await refreshStatus();
     if (appState.status?.migrated_from_tempest) {
       toast("Imported your existing tempest configuration", "success");
@@ -43,7 +46,7 @@
       {:else if router.path === "/settings"}
         <Placeholder title="Settings" />
       {:else if router.path.startsWith("/game/")}
-        <Placeholder title="Game" />
+        <GameDetail />
       {:else}
         <Library />
       {/if}

@@ -11,6 +11,7 @@
   const hue = $derived((game.id * 137) % 360);
   const running = $derived(isRunning(game.id));
   const playtime = $derived(playtimeState.entries[game.id]?.total_secs ?? 0);
+  let thumbBroken = $state(false);
 
   async function play(event: MouseEvent) {
     event.stopPropagation();
@@ -35,12 +36,13 @@
     style="background: linear-gradient(135deg, hsl({hue}, 45%, 22%), hsl({(hue + 40) %
       360}, 50%, 12%))"
   >
-    {#if game.thumbnail_url}
+    {#if game.thumbnail_url && !thumbBroken}
       <img
         src={game.thumbnail_url}
         alt={game.name}
         class="h-full w-full object-cover transition-transform group-hover:scale-105"
         loading="lazy"
+        onerror={() => (thumbBroken = true)}
       />
     {:else}
       <span class="text-4xl font-bold text-white/25">{game.name.slice(0, 1)}</span>

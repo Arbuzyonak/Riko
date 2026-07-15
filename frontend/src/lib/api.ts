@@ -82,6 +82,7 @@ export interface ConfigView {
   shader_cache: boolean;
   minimize_while_playing: boolean;
   presence_enabled: boolean;
+  telemetry_enabled: boolean;
   wine_prefix: string;
   vortex_exe: string;
   log_file: string;
@@ -98,6 +99,7 @@ export type ConfigPatch = Partial<{
   shader_cache: boolean;
   minimize_while_playing: boolean;
   presence_enabled: boolean;
+  telemetry_enabled: boolean;
 }>;
 
 export const getConfig = () => invoke<ConfigView>("get_config");

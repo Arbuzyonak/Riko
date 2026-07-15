@@ -20,7 +20,19 @@ pub struct Config {
     #[serde(default)]
     pub presence: PresenceConfig,
     #[serde(default)]
+    pub telemetry: TelemetryConfig,
+    #[serde(default)]
     pub launch_overrides: HashMap<String, LaunchOverrides>,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct TelemetryConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub install_id: Option<String>,
+    #[serde(default)]
+    pub endpoint: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

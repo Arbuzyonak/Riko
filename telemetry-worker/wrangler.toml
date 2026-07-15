@@ -1,0 +1,15 @@
+name = "riko-telemetry"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# Run `npx wrangler d1 create riko-telemetry` and paste the returned
+# database_id below, then `npx wrangler d1 execute riko-telemetry --file schema.sql`.
+[[d1_databases]]
+binding = "DB"
+database_name = "riko-telemetry"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Optional: set a token so only your dashboard can read aggregates.
+# Set it with: npx wrangler secret put DASHBOARD_TOKEN
+# [vars]
+# (secrets are configured via `wrangler secret put`, not here)

@@ -148,14 +148,17 @@ pub async fn launch(
         });
     }
 
+    let task_cfg = cfg.clone();
     tokio::spawn(async move {
         let mut checkpointed_secs: u64 = 0;
         let mut checkpoint = tokio::time::interval(std::time::Duration::from_secs(60));
         checkpoint.tick().await;
+        let mut stopped = false;
         let status = loop {
             tokio::select! {
                 status = child.wait() => break status,
                 _ = &mut kill_rx => {
+                    stopped = true;
                     terminate_child(&mut child, pid).await;
                     break child.wait().await;
                 }
@@ -165,6 +168,24 @@ pub async fn launch(
                 }
             }
         };
+        if stopped {
+            crate::platform::kill_game_processes(&task_cfg);
+        } else {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            while crate::platform::game_process_running() {
+                tokio::select! {
+                    _ = tokio::time::sleep(std::time::Duration::from_secs(3)) => {}
+                    _ = &mut kill_rx => {
+                        crate::platform::kill_game_processes(&task_cfg);
+                        break;
+                    }
+                    _ = checkpoint.tick() => {
+                        crate::playtime::add_seconds(game_id, 60);
+                        checkpointed_secs += 60;
+                    }
+                }
+            }
+        }
         drop(receiver);
         let duration_secs = (Utc::now() - started_at).num_seconds().max(0) as u64;
         crate::playtime::add_seconds(game_id, duration_secs.saturating_sub(checkpointed_secs));

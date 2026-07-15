@@ -1,9 +1,90 @@
+use crate::config::Config;
 use crate::progress::ProgressSink;
 use crate::{RikoError, VORTEX_BASE};
+use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const STAGE: &str = "download-vortex";
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct RemoteMeta {
+    etag: Option<String>,
+    last_modified: Option<String>,
+    content_length: Option<u64>,
+}
+
+impl RemoteMeta {
+    fn from_headers(headers: &reqwest::header::HeaderMap) -> Self {
+        let text = |name: &str| {
+            headers
+                .get(name)
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string)
+        };
+        Self {
+            etag: text("etag"),
+            last_modified: text("last-modified"),
+            content_length: text("content-length").and_then(|v| v.parse().ok()),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.etag.is_none() && self.last_modified.is_none() && self.content_length.is_none()
+    }
+}
+
+fn meta_path() -> PathBuf {
+    Config::data_dir().join("vortex-meta.json")
+}
+
+fn load_meta() -> Option<RemoteMeta> {
+    serde_json::from_str(&std::fs::read_to_string(meta_path()).ok()?).ok()
+}
+
+fn save_meta(meta: &RemoteMeta) {
+    if meta.is_empty() {
+        return;
+    }
+    if let Ok(json) = serde_json::to_string(meta) {
+        std::fs::create_dir_all(Config::data_dir()).ok();
+        std::fs::write(meta_path(), json).ok();
+    }
+}
+
+pub async fn update_if_stale(
+    dest: &Path,
+    session_token: Option<&str>,
+    sink: &dyn ProgressSink,
+) -> Result<bool, RikoError> {
+    if !dest.exists() {
+        return Ok(false);
+    }
+    let client = reqwest::Client::new();
+    let mut req = client.head(format!("{VORTEX_BASE}/download/windows"));
+    if let Some(token) = session_token {
+        req = req.header("Cookie", format!("session_token={token}"));
+    }
+    let resp = req.send().await?;
+    if !resp.status().is_success() {
+        return Ok(false);
+    }
+    let remote = RemoteMeta::from_headers(resp.headers());
+    if remote.is_empty() {
+        return Ok(false);
+    }
+    match load_meta() {
+        None => {
+            save_meta(&remote);
+            Ok(false)
+        }
+        Some(stored) if stored == remote => Ok(false),
+        Some(_) => {
+            download_vortex(dest, session_token, sink).await?;
+            Ok(true)
+        }
+    }
+}
 
 pub async fn download_vortex(
     dest: &Path,
@@ -31,10 +112,12 @@ pub async fn download_vortex(
         return Err(err);
     }
 
+    let meta = RemoteMeta::from_headers(resp.headers());
     let zip_bytes = crate::net::download_to_memory(resp, STAGE, sink).await?;
 
     sink.info(STAGE, "Extracting Vortex.exe");
     extract_exe_from_zip(&zip_bytes, dest, sink)?;
+    save_meta(&meta);
     sink.finished(STAGE, true, Some(dest.display().to_string()));
     Ok(())
 }

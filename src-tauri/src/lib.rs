@@ -34,6 +34,32 @@ pub fn run() {
 
             handle_uris(app.handle(), std::env::args().collect());
 
+            let update_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let state = update_handle.state::<AppState>();
+                let cfg = state.config.read().await.clone();
+                if !cfg.launcher.auto_update {
+                    return;
+                }
+                let Some(token) = cfg.auth.session_token.clone() else {
+                    return;
+                };
+                let sink = events::TauriSink::new(update_handle.clone(), "update://progress");
+                match riko_core::updater::update_if_stale(
+                    &cfg.paths.vortex_exe,
+                    Some(&token),
+                    &sink,
+                )
+                .await
+                {
+                    Ok(true) => {
+                        update_handle.emit("vortex://updated", ()).ok();
+                    }
+                    Ok(false) => {}
+                    Err(e) => riko_core::logger::info(&format!("auto-update check failed: {e}")),
+                }
+            });
+
             #[cfg(debug_assertions)]
             if let Ok(route) = std::env::var("RIKO_START_ROUTE") {
                 let handle = app.handle().clone();

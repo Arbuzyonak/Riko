@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::{RikoError, VORTEX_BASE};
+use crate::{net, RikoError, VORTEX_BASE};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -13,13 +13,16 @@ pub struct Game {
 }
 
 pub async fn fetch_all(token: &str) -> Result<Vec<Game>, RikoError> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(format!("{VORTEX_BASE}/api/games"))
-        .header("Cookie", format!("session_token={token}"))
-        .send()
-        .await?
-        .error_for_status()?;
+    let resp = net::send_retrying(
+        || {
+            net::shared()
+                .get(format!("{VORTEX_BASE}/api/games"))
+                .header("Cookie", format!("session_token={token}"))
+        },
+        3,
+    )
+    .await?
+    .error_for_status()?;
     let body: Vec<serde_json::Value> = resp.json().await?;
     let games: Vec<Game> = body.iter().filter_map(parse_game).collect();
     if games.is_empty() {
@@ -69,13 +72,16 @@ pub struct GameStats {
 }
 
 pub async fn fetch_stats(token: &str) -> Result<HashMap<u32, GameStats>, RikoError> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(format!("{VORTEX_BASE}/api/game-stats"))
-        .header("Cookie", format!("session_token={token}"))
-        .send()
-        .await?
-        .error_for_status()?;
+    let resp = net::send_retrying(
+        || {
+            net::shared()
+                .get(format!("{VORTEX_BASE}/api/game-stats"))
+                .header("Cookie", format!("session_token={token}"))
+        },
+        3,
+    )
+    .await?
+    .error_for_status()?;
     let body: serde_json::Value = resp.json().await?;
     Ok(parse_stats(&body))
 }

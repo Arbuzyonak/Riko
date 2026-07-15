@@ -1,4 +1,4 @@
-use crate::{RikoError, VORTEX_BASE};
+use crate::{net, RikoError, VORTEX_BASE};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -10,14 +10,17 @@ pub struct Friend {
 }
 
 pub async fn fetch_friends(token: &str) -> Result<Vec<Friend>, RikoError> {
-    let client = reqwest::Client::new();
     let cookie = format!("session_token={token}");
-    let resp = client
-        .get(format!("{VORTEX_BASE}/api/friends"))
-        .header("Cookie", &cookie)
-        .send()
-        .await?
-        .error_for_status()?;
+    let resp = net::send_retrying(
+        || {
+            net::shared()
+                .get(format!("{VORTEX_BASE}/api/friends"))
+                .header("Cookie", &cookie)
+        },
+        3,
+    )
+    .await?
+    .error_for_status()?;
     let body: Vec<serde_json::Value> = resp.json().await?;
     let mut friends: Vec<Friend> = body.iter().filter_map(parse_friend).collect();
 
@@ -27,7 +30,7 @@ pub async fn fetch_friends(token: &str) -> Result<Vec<Friend>, RikoError> {
             .map(|f| f.id.to_string())
             .collect::<Vec<_>>()
             .join(",");
-        if let Ok(resp) = client
+        if let Ok(resp) = net::shared()
             .get(format!("{VORTEX_BASE}/api/users/avatar-pictures?ids={ids}"))
             .header("Cookie", &cookie)
             .send()

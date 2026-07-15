@@ -3,8 +3,52 @@ use crate::{RikoError, USER_AGENT};
 use futures_util::StreamExt;
 use std::io::Write;
 use std::path::Path;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 const PROGRESS_CHUNK: u64 = 262_144;
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+
+pub fn shared() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .user_agent(USER_AGENT)
+            .connect_timeout(CONNECT_TIMEOUT)
+            .timeout(REQUEST_TIMEOUT)
+            .build()
+            .expect("failed to build shared HTTP client")
+    })
+}
+
+pub fn downloader() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .user_agent(USER_AGENT)
+            .connect_timeout(CONNECT_TIMEOUT)
+            .build()
+            .expect("failed to build downloader HTTP client")
+    })
+}
+
+pub async fn send_retrying<F>(make: F, attempts: u32) -> Result<reqwest::Response, RikoError>
+where
+    F: Fn() -> reqwest::RequestBuilder,
+{
+    let mut last: Option<reqwest::Error> = None;
+    for attempt in 0..attempts.max(1) {
+        match make().send().await {
+            Ok(resp) => return Ok(resp),
+            Err(err) => {
+                last = Some(err);
+                tokio::time::sleep(Duration::from_millis(300 * (attempt as u64 + 1))).await;
+            }
+        }
+    }
+    Err(RikoError::Network(last.expect("at least one attempt")))
+}
 
 pub fn client() -> Result<reqwest::Client, RikoError> {
     Ok(reqwest::Client::builder().user_agent(USER_AGENT).build()?)

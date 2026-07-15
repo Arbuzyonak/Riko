@@ -60,8 +60,7 @@ pub async fn update_if_stale(
     if !dest.exists() {
         return Ok(false);
     }
-    let client = reqwest::Client::new();
-    let mut req = client.head(format!("{VORTEX_BASE}/download/windows"));
+    let mut req = crate::net::shared().head(format!("{VORTEX_BASE}/download/windows"));
     if let Some(token) = session_token {
         req = req.header("Cookie", format!("session_token={token}"));
     }
@@ -96,8 +95,7 @@ pub async fn download_vortex(
     }
 
     let url = format!("{VORTEX_BASE}/download/windows");
-    let client = reqwest::Client::new();
-    let mut req = client.get(&url);
+    let mut req = crate::net::downloader().get(&url);
     if let Some(token) = session_token {
         req = req.header("Cookie", format!("session_token={token}"));
     }

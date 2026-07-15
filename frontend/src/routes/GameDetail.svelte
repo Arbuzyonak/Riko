@@ -154,19 +154,27 @@
           {#if running}
             <span class="ml-2 inline-flex items-center gap-1.5 text-ok">
               <span class="h-2 w-2 animate-pulse rounded-full bg-ok"></span>
-              Running
+              Playing
             </span>
           {/if}
         </p>
       </div>
       {#if running}
-        <button
-          class="rounded-lg bg-danger/90 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-danger disabled:opacity-50"
-          disabled={busy}
-          onclick={stop}
-        >
-          Stop
-        </button>
+        <div class="flex items-center gap-3">
+          <span
+            class="flex items-center gap-2 rounded-lg bg-ok/15 px-6 py-2.5 text-sm font-semibold text-ok"
+          >
+            <span class="h-2 w-2 animate-pulse rounded-full bg-ok"></span>
+            Playing
+          </span>
+          <button
+            class="rounded-lg bg-danger/90 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-danger disabled:opacity-50"
+            disabled={busy}
+            onclick={stop}
+          >
+            Stop
+          </button>
+        </div>
       {:else}
         <button
           class="flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"

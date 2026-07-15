@@ -155,6 +155,7 @@ impl Config {
         if copied {
             let mut cfg = Self::load();
             cfg.paths.log_file = Self::data_dir().join("riko.log");
+            cfg.plugins.enabled = migrate_tempest_plugins();
             cfg.save().ok();
         }
         copied
@@ -213,6 +214,36 @@ impl Config {
         std::fs::write(dir.join("config.toml"), contents)?;
         Ok(())
     }
+}
+
+fn migrate_tempest_plugins() -> Vec<String> {
+    let src = dirs::data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
+        .join("tempest")
+        .join("plugins");
+    if !src.is_dir() {
+        return vec![];
+    }
+    let dest = crate::plugin::plugins_dir();
+    let mut names = vec![];
+    if let Ok(entries) = std::fs::read_dir(&src) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let Some(name) = entry.file_name().to_str().map(str::to_string) else {
+                continue;
+            };
+            let target = dest.join(&name);
+            if !target.exists()
+                && crate::plugin::copy_dir_recursive(&entry.path(), &target).is_ok()
+            {
+                names.push(name);
+            }
+        }
+    }
+    names.sort();
+    names
 }
 
 #[cfg(test)]

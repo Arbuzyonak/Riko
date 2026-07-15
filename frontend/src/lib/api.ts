@@ -103,6 +103,45 @@ export const getConfig = () => invoke<ConfigView>("get_config");
 export const updateConfig = (patch: ConfigPatch) =>
   invoke<ConfigView>("update_config", { patch });
 
+export interface PluginInfo {
+  name: string;
+  version: string;
+  description: string;
+  kind: "vulkan-layer" | "binary" | "env-only";
+  platforms: string[];
+  builtin: boolean;
+  installed: boolean;
+  built: boolean;
+  enabled: boolean;
+  supported: boolean;
+  build_command: string | null;
+}
+
+export const listPlugins = () => invoke<PluginInfo[]>("list_plugins");
+
+export const installPlugin = (name: string) =>
+  invoke<PluginInfo>("install_plugin", { name });
+
+export const importPlugin = (path: string) =>
+  invoke<PluginInfo>("import_plugin", { path });
+
+export const removePlugin = (name: string) =>
+  invoke<void>("remove_plugin", { name });
+
+export const setPluginEnabled = (
+  name: string,
+  gameId: number | null,
+  enabled: boolean | null
+) => invoke<PluginInfo[]>("set_plugin_enabled", { name, gameId, enabled });
+
+export interface PerGamePlugins {
+  enabled: string[];
+  disabled: string[];
+}
+
+export const getGamePluginOverrides = (gameId: number) =>
+  invoke<PerGamePlugins>("get_game_plugin_overrides", { gameId });
+
 export interface ProgressEvent {
   type: "stage_started" | "stage_progress" | "stage_log" | "stage_finished";
   stage: string;

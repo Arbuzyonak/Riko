@@ -1,0 +1,23 @@
+[plugin]
+name = "vortex-optim"
+version = "0.1.0"
+description = "Applies DXVK and Mesa performance tweaks and runs a background optimizer while playing"
+type = "binary"
+platforms = ["linux"]
+
+[build]
+command = "cc -O2 -std=c11 -Wall -Wextra -o vortex-optim optimizer.c"
+artifacts = ["vortex-optim"]
+
+[env]
+DXVK_STATE_CACHE = "1"
+mesa_glthread = "true"
+MESA_NO_DITHER = "1"
+
+[binary]
+entrypoint = "vortex-optim"
+run_after_launch = true
+delay_secs = 10
+
+[env_append]
+DXVK_CONFIG = { separator = ",", values = ["dxvk.enableAsync=true", "dxvk.numCompilerThreads=2"] }

@@ -191,6 +191,15 @@ export interface LaunchOverrides {
   env: Record<string, string>;
 }
 
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  release_url: string;
+}
+
+export const checkRikoUpdate = () =>
+  invoke<UpdateInfo | null>("check_riko_update");
+
 export const getLaunchOverrides = (gameId: number) =>
   invoke<LaunchOverrides>("get_launch_overrides", { gameId });
 

@@ -17,6 +17,10 @@
   import { toast } from "./lib/stores/toast.svelte";
   import { initSessionEvents } from "./lib/stores/session.svelte";
   import { initProgressEvents } from "./lib/stores/progress.svelte";
+  import { checkRikoUpdate, type UpdateInfo } from "./lib/api";
+
+  let update = $state<UpdateInfo | null>(null);
+  let updateDismissed = $state(false);
 
   onMount(async () => {
     await initSessionEvents();
@@ -33,6 +37,9 @@
     } else if (appState.status?.setup_needed) {
       navigate("/setup");
     }
+    checkRikoUpdate()
+      .then((info) => (update = info))
+      .catch(() => {});
   });
 
   const showChrome = $derived(router.path !== "/login" && router.path !== "/setup");
@@ -50,6 +57,30 @@
       <Sidebar />
     {/if}
     <main class="flex-1 overflow-y-auto">
+      {#if update && !updateDismissed && showChrome}
+        <div
+          class="flex items-center gap-3 border-b border-edge bg-accent/10 px-6 py-2.5 text-sm"
+        >
+          <span class="text-zinc-200">
+            Riko <b class="font-semibold text-white">{update.latest}</b> is available
+            <span class="text-zinc-500">(you have {update.current})</span>
+          </span>
+          <a
+            class="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-accent-hover"
+            href={update.release_url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View release
+          </a>
+          <button
+            class="ml-auto text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+            onclick={() => (updateDismissed = true)}
+          >
+            Dismiss
+          </button>
+        </div>
+      {/if}
       {#if router.path === "/login"}
         <Login />
       {:else if router.path === "/setup"}

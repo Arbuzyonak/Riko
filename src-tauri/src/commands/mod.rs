@@ -7,4 +7,5 @@ pub mod playtime;
 pub mod plugins;
 pub mod settings;
 pub mod setup;
+pub mod update;
 pub mod wine;

@@ -200,6 +200,26 @@ export interface UpdateInfo {
 export const checkRikoUpdate = () =>
   invoke<UpdateInfo | null>("check_riko_update");
 
+export interface MarketplaceEntry {
+  name: string;
+  version: string;
+  description: string;
+  kind: string;
+  platforms: string[];
+  download_url: string;
+  sha256: string;
+  size_bytes: number;
+  author: string | null;
+  homepage: string | null;
+  installed: boolean;
+}
+
+export const listMarketplace = () =>
+  invoke<MarketplaceEntry[]>("list_marketplace");
+
+export const installMarketplacePlugin = (name: string) =>
+  invoke<PluginInfo>("install_marketplace_plugin", { name });
+
 export const getLaunchOverrides = (gameId: number) =>
   invoke<LaunchOverrides>("get_launch_overrides", { gameId });
 

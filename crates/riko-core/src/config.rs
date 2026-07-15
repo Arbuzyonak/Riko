@@ -90,6 +90,8 @@ pub struct PluginConfig {
     pub enabled: Vec<String>,
     #[serde(default)]
     pub per_game: HashMap<String, PerGamePlugins>,
+    #[serde(default)]
+    pub catalog_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

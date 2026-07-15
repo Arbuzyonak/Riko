@@ -3,6 +3,7 @@ pub mod doctor;
 pub mod friends;
 pub mod games;
 pub mod launch;
+pub mod marketplace;
 pub mod playtime;
 pub mod plugins;
 pub mod settings;

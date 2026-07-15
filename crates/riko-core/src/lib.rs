@@ -7,6 +7,7 @@ pub mod friends;
 pub mod games;
 pub mod launcher;
 pub mod logger;
+pub mod marketplace;
 pub mod net;
 pub mod platform;
 pub mod playtime;

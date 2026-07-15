@@ -183,6 +183,14 @@ export interface PlaytimeEntry {
 export const getPlaytime = () =>
   invoke<Record<number, PlaytimeEntry>>("get_playtime");
 
+export interface SessionRecord {
+  game_id: number;
+  started_at: string;
+  duration_secs: number;
+}
+
+export const getSessions = () => invoke<SessionRecord[]>("get_sessions");
+
 export type FixKind =
   | { kind: "command"; shell: string }
   | { kind: "run_setup" }

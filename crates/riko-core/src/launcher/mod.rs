@@ -168,6 +168,7 @@ pub async fn launch(
         drop(receiver);
         let duration_secs = (Utc::now() - started_at).num_seconds().max(0) as u64;
         crate::playtime::add_seconds(game_id, duration_secs.saturating_sub(checkpointed_secs));
+        crate::playtime::record_session(game_id, started_at, duration_secs);
         events
             .send(GameEvent::Exited {
                 code: status.ok().and_then(|s| s.code()),

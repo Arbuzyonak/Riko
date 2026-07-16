@@ -69,9 +69,21 @@ pub async fn launch(
     let mut receiver = process::ProcessManager::new();
     receiver.ensure_receiver(cfg);
 
+    if cfg.shader_cache.community {
+        match crate::shader_cache::prefetch(cfg, game_id, &crate::NullSink).await {
+            Ok(true) => tracing::info!("applied community shader cache for game {game_id}"),
+            Ok(false) => {}
+            Err(e) => tracing::warn!("shader cache prefetch failed: {e}"),
+        }
+    }
+
     let sidecars = plugin_env.sidecars.clone();
-    let mut cmd =
-        tokio::process::Command::from(crate::platform::build_launch_command(cfg, &uri, &plugin_env));
+    let mut cmd = tokio::process::Command::from(crate::platform::build_launch_command(
+        cfg,
+        game_id,
+        &uri,
+        &plugin_env,
+    ));
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 

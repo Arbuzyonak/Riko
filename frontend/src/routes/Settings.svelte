@@ -244,6 +244,12 @@
         hint="Persist compiled shaders between sessions"
         onchange={(v) => patch({ shader_cache: v })}
       />
+      <Toggle
+        checked={cfg.community_shaders}
+        label="Download community shader caches"
+        hint="Off by default. Before launch, fetch a checksum-verified precompiled shader cache matching your GPU so the first minutes don't stutter."
+        onchange={(v) => patch({ community_shaders: v })}
+      />
     </section>
 
     <section class="flex flex-col rounded-xl border border-edge bg-panel px-5 py-4">

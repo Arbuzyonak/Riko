@@ -11,6 +11,8 @@
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 ![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows-8b5cf6)
 
+<img src=".github/assets/screenshot-library.png" width="820" alt="Riko library" />
+
 </div>
 
 ## What is Riko

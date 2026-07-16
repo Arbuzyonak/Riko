@@ -27,20 +27,22 @@ pub fn register_uri() -> Result<(), RikoError> {
          Name=Riko Launcher\n\
          Exec={} %u\n\
          Type=Application\n\
-         MimeType=x-scheme-handler/vortex;\n\
+         MimeType=x-scheme-handler/vortex;x-scheme-handler/riko;\n\
          NoDisplay=true\n",
         exe_path.display()
     );
     std::fs::write(apps_dir.join(DESKTOP_FILE), contents)?;
 
-    Command::new("xdg-mime")
-        .args(["default", DESKTOP_FILE, "x-scheme-handler/vortex"])
-        .status()
-        .ok();
-    Command::new("gio")
-        .args(["mime", "x-scheme-handler/vortex", DESKTOP_FILE])
-        .status()
-        .ok();
+    for scheme in ["x-scheme-handler/vortex", "x-scheme-handler/riko"] {
+        Command::new("xdg-mime")
+            .args(["default", DESKTOP_FILE, scheme])
+            .status()
+            .ok();
+        Command::new("gio")
+            .args(["mime", scheme, DESKTOP_FILE])
+            .status()
+            .ok();
+    }
     Command::new("update-desktop-database")
         .arg(&apps_dir)
         .status()

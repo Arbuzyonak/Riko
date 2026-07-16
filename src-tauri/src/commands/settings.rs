@@ -114,6 +114,7 @@ pub async fn update_config(
         if v {
             riko_core::telemetry::ensure_install_id(&mut cfg);
         }
+        riko_core::telemetry::refresh(&cfg);
     }
     if let Some(v) = patch.community_shaders {
         cfg.shader_cache.community = v;

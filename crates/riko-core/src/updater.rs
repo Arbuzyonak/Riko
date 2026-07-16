@@ -111,7 +111,7 @@ pub async fn download_vortex(
     }
 
     let meta = RemoteMeta::from_headers(resp.headers());
-    let zip_bytes = crate::net::download_to_memory(resp, STAGE, sink).await?;
+    let zip_bytes = crate::net::download_to_memory(resp, STAGE, sink, 1_024 * 1_024 * 1_024).await?;
 
     sink.info(STAGE, "Extracting Vortex.exe");
     extract_exe_from_zip(&zip_bytes, dest, sink)?;

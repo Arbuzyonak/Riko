@@ -22,7 +22,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
 
     let games = riko_core::games::load_cached();
     let mut playtime: Vec<_> = riko_core::playtime::load().into_iter().collect();
-    playtime.sort_by(|a, b| b.1.last_played.cmp(&a.1.last_played));
+    playtime.sort_by_key(|entry| std::cmp::Reverse(entry.1.last_played));
     let mut added = 0;
     for (game_id, _) in playtime {
         let Some(game) = games.iter().find(|g| g.id == game_id) else {

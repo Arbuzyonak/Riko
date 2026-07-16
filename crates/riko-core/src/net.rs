@@ -37,13 +37,16 @@ pub async fn send_retrying<F>(make: F, attempts: u32) -> Result<reqwest::Respons
 where
     F: Fn() -> reqwest::RequestBuilder,
 {
+    let total = attempts.max(1);
     let mut last: Option<reqwest::Error> = None;
-    for attempt in 0..attempts.max(1) {
+    for attempt in 0..total {
         match make().send().await {
             Ok(resp) => return Ok(resp),
             Err(err) => {
                 last = Some(err);
-                tokio::time::sleep(Duration::from_millis(300 * (attempt as u64 + 1))).await;
+                if attempt + 1 < total {
+                    tokio::time::sleep(Duration::from_millis(300 * (attempt as u64 + 1))).await;
+                }
             }
         }
     }
@@ -131,13 +134,27 @@ pub async fn download_to_memory(
     resp: reqwest::Response,
     stage: &str,
     sink: &dyn ProgressSink,
+    max_bytes: u64,
 ) -> Result<Vec<u8>, RikoError> {
     let total = resp.content_length();
-    let mut bytes: Vec<u8> = Vec::with_capacity(total.unwrap_or(10_000_000) as usize);
+    if let Some(len) = total
+        && len > max_bytes
+    {
+        return Err(RikoError::Other(format!(
+            "download too large: {len} bytes exceeds the {max_bytes}-byte limit"
+        )));
+    }
+    let capacity = total.unwrap_or(10_000_000).min(max_bytes) as usize;
+    let mut bytes: Vec<u8> = Vec::with_capacity(capacity);
     let mut stream = resp.bytes_stream();
     let mut last_emit: u64 = 0;
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
+        if bytes.len() as u64 + chunk.len() as u64 > max_bytes {
+            return Err(RikoError::Other(format!(
+                "download exceeded the {max_bytes}-byte limit"
+            )));
+        }
         bytes.extend_from_slice(&chunk);
         let done = bytes.len() as u64;
         if done - last_emit >= PROGRESS_CHUNK {

@@ -86,7 +86,7 @@ pub async fn install(url: &str, sink: &dyn ProgressSink) -> Result<InstalledWine
         .send()
         .await?
         .error_for_status()?;
-    let bytes = crate::net::download_to_memory(resp, STAGE, sink).await?;
+    let bytes = crate::net::download_to_memory(resp, STAGE, sink, 1_024 * 1_024 * 1_024).await?;
 
     sink.info(STAGE, "Extracting");
     let dest = wine_dir();

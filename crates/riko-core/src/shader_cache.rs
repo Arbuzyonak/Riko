@@ -116,7 +116,9 @@ pub async fn prefetch(cfg: &Config, game_id: u32, sink: &dyn ProgressSink) -> Re
     if !cfg.shader_cache.community {
         return Ok(false);
     }
-    let key = gpu_key();
+    let key = tokio::task::spawn_blocking(gpu_key)
+        .await
+        .unwrap_or_default();
     let entries = fetch_index(&index_url(cfg)).await?;
     let Some(entry) = find_match(&entries, game_id, &key) else {
         return Ok(false);
@@ -136,7 +138,7 @@ pub async fn download_and_apply(
         .send()
         .await?
         .error_for_status()?;
-    let bytes = net::download_to_memory(resp, STAGE, sink).await?;
+    let bytes = net::download_to_memory(resp, STAGE, sink, 512 * 1_024 * 1_024).await?;
 
     let actual = sha256_hex(&bytes);
     if !actual.eq_ignore_ascii_case(entry.sha256.trim()) {

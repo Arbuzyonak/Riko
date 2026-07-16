@@ -70,7 +70,7 @@ pub async fn download_and_extract(
         .send()
         .await?
         .error_for_status()?;
-    let bytes = net::download_to_memory(resp, STAGE, sink).await?;
+    let bytes = net::download_to_memory(resp, STAGE, sink, 128 * 1_024 * 1_024).await?;
 
     let actual = sha256_hex(&bytes);
     if !actual.eq_ignore_ascii_case(entry.sha256.trim()) {

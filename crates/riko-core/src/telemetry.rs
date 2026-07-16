@@ -1,8 +1,21 @@
 use crate::config::Config;
 use crate::net;
 use serde::Serialize;
+use std::sync::RwLock;
 
 pub const DEFAULT_ENDPOINT: &str = "https://riko-telemetry.workers.dev";
+
+static CURRENT: RwLock<Option<Snapshot>> = RwLock::new(None);
+
+pub fn refresh(cfg: &Config) {
+    if let Ok(mut guard) = CURRENT.write() {
+        *guard = Some(Snapshot::from_config(cfg));
+    }
+}
+
+fn current() -> Option<Snapshot> {
+    CURRENT.read().ok().and_then(|guard| guard.clone())
+}
 
 #[derive(Clone, Debug)]
 pub struct Snapshot {
@@ -118,15 +131,15 @@ pub async fn report_error(snapshot: &Snapshot, kind: &str, message: &str) {
         .await;
 }
 
-pub fn install_panic_hook(snapshot: Snapshot) {
+pub fn install_panic_hook() {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let message = info.to_string();
         tracing::error!("panic: {message}");
-        if snapshot.enabled
+        if let Some(snapshot) = current()
+            && snapshot.enabled
             && let Ok(handle) = tokio::runtime::Handle::try_current()
         {
-            let snapshot = snapshot.clone();
             handle.spawn(async move {
                 report_error(&snapshot, "panic", &message).await;
             });

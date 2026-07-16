@@ -40,9 +40,10 @@ pub fn run() {
                 let state = telemetry_handle.state::<AppState>();
                 let snapshot = {
                     let cfg = state.config.read().await;
+                    riko_core::telemetry::refresh(&cfg);
                     riko_core::telemetry::Snapshot::from_config(&cfg)
                 };
-                riko_core::telemetry::install_panic_hook(snapshot.clone());
+                riko_core::telemetry::install_panic_hook();
                 riko_core::telemetry::heartbeat(&snapshot).await;
             });
 

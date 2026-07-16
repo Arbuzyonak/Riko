@@ -70,10 +70,12 @@ pub async fn launch(
     receiver.ensure_receiver(cfg);
 
     if cfg.shader_cache.community {
-        match crate::shader_cache::prefetch(cfg, game_id, &crate::NullSink).await {
-            Ok(true) => tracing::info!("applied community shader cache for game {game_id}"),
-            Ok(false) => {}
-            Err(e) => tracing::warn!("shader cache prefetch failed: {e}"),
+        let prefetch = crate::shader_cache::prefetch(cfg, game_id, &crate::NullSink);
+        match tokio::time::timeout(std::time::Duration::from_secs(12), prefetch).await {
+            Ok(Ok(true)) => tracing::info!("applied community shader cache for game {game_id}"),
+            Ok(Ok(false)) => {}
+            Ok(Err(e)) => tracing::warn!("shader cache prefetch failed: {e}"),
+            Err(_) => tracing::warn!("shader cache prefetch timed out; launching without it"),
         }
     }
 

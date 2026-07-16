@@ -25,6 +25,12 @@
   let marketError = $state<string | null>(null);
   let marketLoading = $state(false);
   let confirmMarket = $state<MarketplaceEntry | null>(null);
+  let activeTab = $state<"installed" | "marketplace">("installed");
+
+  function selectTab(tab: "installed" | "marketplace") {
+    activeTab = tab;
+    if (tab === "marketplace" && market === null && !marketLoading) loadMarket();
+  }
 
   async function loadMarket() {
     marketLoading = true;
@@ -121,14 +127,46 @@
         building runs their commands on your machine.
       </p>
     </div>
+    {#if activeTab === "installed"}
+      <button
+        class="shrink-0 rounded-lg border border-edge bg-panel px-3.5 py-2 text-sm text-zinc-300 transition-colors hover:bg-panel-hover"
+        onclick={importFolder}
+      >
+        Import folder…
+      </button>
+    {:else}
+      <button
+        class="shrink-0 rounded-lg border border-edge bg-panel px-3.5 py-2 text-sm text-zinc-300 transition-colors hover:bg-panel-hover disabled:opacity-40"
+        onclick={loadMarket}
+        disabled={marketLoading}
+      >
+        Refresh
+      </button>
+    {/if}
+  </div>
+
+  <div class="flex gap-1 border-b border-edge">
     <button
-      class="shrink-0 rounded-lg border border-edge bg-panel px-3.5 py-2 text-sm text-zinc-300 transition-colors hover:bg-panel-hover"
-      onclick={importFolder}
+      class="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors {activeTab ===
+      'installed'
+        ? 'border-accent text-white'
+        : 'border-transparent text-zinc-500 hover:text-zinc-300'}"
+      onclick={() => selectTab("installed")}
     >
-      Import folder…
+      Installed
+    </button>
+    <button
+      class="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors {activeTab ===
+      'marketplace'
+        ? 'border-accent text-white'
+        : 'border-transparent text-zinc-500 hover:text-zinc-300'}"
+      onclick={() => selectTab("marketplace")}
+    >
+      Marketplace
     </button>
   </div>
 
+  {#if activeTab === "installed"}
   <div class="flex flex-col gap-4">
     {#each plugins ?? [] as plugin (plugin.name)}
       <div class="flex flex-col rounded-xl border border-edge bg-panel px-5 py-4">
@@ -217,24 +255,12 @@
       </div>
     {/each}
   </div>
-
-  <div class="mt-2 flex items-center justify-between border-t border-edge pt-6">
-    <div>
-      <h2 class="text-lg font-semibold tracking-tight text-white">Browse the marketplace</h2>
-      <p class="mt-1 text-sm text-zinc-500">
-        Community plugins from the shared catalog. Each download is verified against a
-        checksum before it's installed — but installing still runs its build command, so
-        only add plugins you trust.
-      </p>
-    </div>
-    <button
-      class="shrink-0 rounded-lg border border-edge bg-panel px-3.5 py-2 text-sm text-zinc-300 transition-colors hover:bg-panel-hover disabled:opacity-40"
-      onclick={loadMarket}
-      disabled={marketLoading}
-    >
-      {market === null ? "Browse" : "Refresh"}
-    </button>
-  </div>
+  {:else}
+  <p class="max-w-2xl text-sm text-zinc-500">
+    Community plugins from the shared catalog. Each download is verified against a
+    checksum before it's installed — but installing still runs its build command, so
+    only add plugins you trust.
+  </p>
 
   {#if marketLoading}
     <div class="flex justify-center py-6">
@@ -284,6 +310,7 @@
         {/each}
       </div>
     {/if}
+  {/if}
   {/if}
 </div>
 

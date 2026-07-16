@@ -13,7 +13,7 @@ Before launch (only when enabled), the launcher:
    (e.g. `nvidia-geforce-rtx-2070-super`).
 2. Fetches `index.json` and looks for an entry matching `{game_id, gpu_key}`.
 3. Downloads the archive, **verifies its SHA-256**, and extracts it into
-   `~/.cache/vortex-shaders/<game_id>/` — the same directory the launcher points
+   `~/.cache/vortex-shaders/<game_id>/` - the same directory the launcher points
    `VKD3D_SHADER_CACHE_PATH` / `DXVK_STATE_CACHE_PATH` at.
 
 The index URL defaults to `shader_cache::DEFAULT_INDEX_URL` and can be
@@ -58,4 +58,4 @@ to `index.json` with your `gpu_key` (print it from the Doctor GPU line, slugged)
 and the checksum. Review + merge is the trust gate.
 
 > Caches are GPU- and driver-specific. Applying a cache from a very different
-> driver version is harmless — the game just recompiles what doesn't match.
+> driver version is harmless - the game just recompiles what doesn't match.

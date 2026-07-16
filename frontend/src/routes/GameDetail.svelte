@@ -168,7 +168,7 @@
     const link = `riko://join?game=${gameId}`;
     try {
       await navigator.clipboard.writeText(link);
-      toast("Invite link copied — anyone with Riko can open it to join", "success");
+      toast("Invite link copied - anyone with Riko can open it to join", "success");
     } catch {
       toast(link, "info");
     }

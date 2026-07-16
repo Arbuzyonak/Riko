@@ -123,7 +123,7 @@
     <div>
       <h1 class="text-2xl font-semibold tracking-tight text-white">Plugins</h1>
       <p class="mt-1 text-sm text-zinc-500">
-        Enhancements injected when a game launches. Only install plugins you trust —
+        Enhancements injected when a game launches. Only install plugins you trust -
         building runs their commands on your machine.
       </p>
     </div>
@@ -195,7 +195,7 @@
             {/if}
             {#if plugin.missing_requirement}
               <div class="mt-1.5 flex items-center gap-2 text-xs text-warn">
-                <span>Won't take effect — missing system package. Install it with:</span>
+                <span>Won't take effect - missing system package. Install it with:</span>
                 <code
                   class="rounded bg-black/40 px-2 py-0.5 font-mono text-zinc-300 select-text"
                 >
@@ -258,7 +258,7 @@
   {:else}
   <p class="max-w-2xl text-sm text-zinc-500">
     Community plugins from the shared catalog. Each download is verified against a
-    checksum before it's installed — but installing still runs its build command, so
+    checksum before it's installed - but installing still runs its build command, so
     only add plugins you trust.
   </p>
 

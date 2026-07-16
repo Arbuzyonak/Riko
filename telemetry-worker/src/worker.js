@@ -99,7 +99,7 @@ function bar(rows, key) {
   const max = Math.max(1, ...rows.map((r) => r.n));
   return rows
     .map(
-      (r) => `<div class="row"><span class="k">${esc(r[key] || "—")}</span>
+      (r) => `<div class="row"><span class="k">${esc(r[key] || "-")}</span>
         <span class="track"><span class="fill" style="width:${(r.n / max) * 100}%"></span></span>
         <span class="n">${r.n}</span></div>`
     )

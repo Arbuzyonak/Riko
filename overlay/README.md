@@ -22,7 +22,7 @@ exits. See `crates/riko-core/src/overlay.rs`.
 }
 ```
 
-This is a stable IPC surface. Anything can consume it — the overlay layer below,
+This is a stable IPC surface. Anything can consume it - the overlay layer below,
 a MangoHud custom-text feed, a Conky widget, a stream deck, or a second monitor
 companion window.
 
@@ -34,12 +34,12 @@ layer via `VK_ADD_IMPLICIT_LAYER_PATH`). It would:
 
 1. Load on game start via the layer manifest the launcher already wires up.
 2. Poll `overlay-state.json` (or watch it via inotify).
-3. Render a small HUD on present — session timer, friends online, and toast
-   notifications — using Dear ImGui or a minimal vertex/texture pass.
+3. Render a small HUD on present - session timer, friends online, and toast
+   notifications - using Dear ImGui or a minimal vertex/texture pass.
 
 Recommended path: fork an existing MIT-licensed present-hook overlay (vkBasalt
 and MangoHud are both good references for the layer plumbing) and swap the draw
 step for the state above. Ship it through the plugin marketplace so users opt in.
 
 Until that layer exists, the launcher still produces everything it needs, so the
-remaining work is isolated to the native layer — no launcher changes required.
+remaining work is isolated to the native layer - no launcher changes required.

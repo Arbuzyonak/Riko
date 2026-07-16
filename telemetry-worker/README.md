@@ -50,7 +50,7 @@ wrangler secret put DASHBOARD_TOKEN     # then open  /?token=<value>
 ```
 
 Without a token the dashboard is public-read (it contains no personal data, but
-error messages can be noisy — a token is recommended).
+error messages can be noisy - a token is recommended).
 
 ## Private server instead of a VPS?
 

@@ -283,7 +283,7 @@
       <Toggle
         checked={cfg.telemetry_enabled}
         label="Share anonymous usage & crash reports"
-        hint="Off by default. Sends a random install ID, app version, and OS — plus crash messages if the app panics. Never your account, games, or logs."
+        hint="Off by default. Sends a random install ID, app version, and OS - plus crash messages if the app panics. Never your account, games, or logs."
         onchange={(v) => patch({ telemetry_enabled: v })}
       />
     </section>

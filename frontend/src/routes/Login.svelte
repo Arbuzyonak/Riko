@@ -82,7 +82,7 @@
         class="text-sm text-zinc-500 transition-colors hover:text-zinc-300"
         onclick={() => navigate("/settings")}
       >
-        Cancel — stay as {appState.status.username}
+        Cancel - stay as {appState.status.username}
       </button>
     {/if}
   </form>

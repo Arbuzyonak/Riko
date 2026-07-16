@@ -80,7 +80,7 @@
     <div class="rounded-xl border border-edge bg-panel px-5 py-4">
       <p class="text-xs text-zinc-500 uppercase tracking-wide">Total playtime</p>
       <p class="mt-1 text-2xl font-semibold text-white tabular-nums">
-        {totalSecs > 0 ? formatPlaytime(totalSecs) : "—"}
+        {totalSecs > 0 ? formatPlaytime(totalSecs) : "-"}
       </p>
     </div>
     <div class="rounded-xl border border-edge bg-panel px-5 py-4">

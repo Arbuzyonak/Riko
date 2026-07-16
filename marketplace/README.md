@@ -21,7 +21,7 @@ catalog_url = "https://raw.githubusercontent.com/OWNER/riko-plugins/main/catalog
 3. The archive is extracted with path-traversal protection (no `..`, no
    absolute paths) into the user's plugin directory.
 4. The extracted `plugin.toml` name must match the catalog `name`.
-5. Only then is the normal build/install flow run — and the UI still warns that
+5. Only then is the normal build/install flow run - and the UI still warns that
    building runs the plugin's commands locally.
 
 Checksums stop tampering in transit, but they do **not** make a plugin
@@ -45,7 +45,7 @@ trustworthy. Treat the catalog like a package registry: review submissions.
 | `homepage`     | no       | project link                                      |
 
 The `.zip` may contain the plugin files at its root or nested under a folder
-named `name/` — both are accepted.
+named `name/` - both are accepted.
 
 ## Submitting a plugin (recommended flow)
 
@@ -55,4 +55,4 @@ named `name/` — both are accepted.
 3. Upload the `.zip` (a GitHub Release asset is easiest) and paste its link into
    the stub's `download_url`.
 4. Open a PR adding the entry to `catalog.json`. Review + merge is the trust
-   gate — CI can additionally validate the manifest and re-verify the checksum.
+   gate - CI can additionally validate the manifest and re-verify the checksum.

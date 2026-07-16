@@ -79,12 +79,20 @@ pub async fn spawn_game(
     sessions.insert(game_id, handle);
     drop(sessions);
 
+    let game_name = riko_core::games::load_cached()
+        .into_iter()
+        .find(|g| g.id == game_id)
+        .map(|g| g.name)
+        .unwrap_or_else(|| format!("Game #{game_id}"));
+
+    riko_core::overlay::write(&riko_core::overlay::OverlayState {
+        game_id,
+        game_name: game_name.clone(),
+        started_at_unix,
+        friends_online: 0,
+    });
+
     if cfg.presence.enabled {
-        let game_name = riko_core::games::load_cached()
-            .into_iter()
-            .find(|g| g.id == game_id)
-            .map(|g| g.name)
-            .unwrap_or_else(|| format!("Game #{game_id}"));
         state.presence.send(PresenceCmd::Playing {
             game_name,
             started_at_unix,
@@ -126,6 +134,7 @@ pub async fn spawn_game(
                             let state = app.state::<AppState>();
                             state.sessions.lock().await.remove(&game_id);
                             if state.sessions.lock().await.is_empty() {
+                                riko_core::overlay::clear();
                                 state.presence.send(PresenceCmd::Idle);
                                 if let Some(window) = app.get_webview_window("main") {
                                     window.unminimize().ok();

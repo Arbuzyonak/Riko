@@ -20,6 +20,7 @@ pub struct ConfigView {
     pub minimize_while_playing: bool,
     pub presence_enabled: bool,
     pub telemetry_enabled: bool,
+    pub community_shaders: bool,
     pub wine_prefix: String,
     pub vortex_exe: String,
     pub log_file: String,
@@ -38,6 +39,7 @@ pub struct ConfigPatch {
     pub minimize_while_playing: Option<bool>,
     pub presence_enabled: Option<bool>,
     pub telemetry_enabled: Option<bool>,
+    pub community_shaders: Option<bool>,
 }
 
 fn view(cfg: &riko_core::Config) -> ConfigView {
@@ -55,6 +57,7 @@ fn view(cfg: &riko_core::Config) -> ConfigView {
         minimize_while_playing: cfg.launcher.minimize_while_playing,
         presence_enabled: cfg.presence.enabled,
         telemetry_enabled: cfg.telemetry.enabled,
+        community_shaders: cfg.shader_cache.community,
         wine_prefix: cfg.paths.wine_prefix.display().to_string(),
         vortex_exe: cfg.paths.vortex_exe.display().to_string(),
         log_file: cfg.paths.log_file.display().to_string(),
@@ -111,6 +114,9 @@ pub async fn update_config(
         if v {
             riko_core::telemetry::ensure_install_id(&mut cfg);
         }
+    }
+    if let Some(v) = patch.community_shaders {
+        cfg.shader_cache.community = v;
     }
     cfg.save()?;
     Ok(view(&cfg))

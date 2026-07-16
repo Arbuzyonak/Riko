@@ -63,7 +63,12 @@ pub fn unregister_uri() {
     }
 }
 
-pub fn build_launch_command(cfg: &Config, uri: &str, plugin_env: &ResolvedPluginEnv) -> Command {
+pub fn build_launch_command(
+    cfg: &Config,
+    game_id: u32,
+    uri: &str,
+    plugin_env: &ResolvedPluginEnv,
+) -> Command {
     let perf = &cfg.launcher;
     let use_gamemode = perf.use_gamemode && which::which("gamemoderun").is_ok();
 
@@ -86,13 +91,10 @@ pub fn build_launch_command(cfg: &Config, uri: &str, plugin_env: &ResolvedPlugin
     }
 
     if perf.shader_cache {
-        let cache = dirs::cache_dir()
-            .unwrap_or_else(|| {
-                std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default() + "/.cache")
-            })
-            .join("vortex-shaders");
+        let cache = crate::shader_cache::dir_for(game_id);
         std::fs::create_dir_all(&cache).ok();
-        cmd.env("VKD3D_SHADER_CACHE_PATH", cache);
+        cmd.env("VKD3D_SHADER_CACHE_PATH", &cache);
+        cmd.env("DXVK_STATE_CACHE_PATH", &cache);
     }
 
     for (key, value) in &cfg.wine.env {

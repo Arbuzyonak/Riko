@@ -22,6 +22,8 @@ pub struct Config {
     #[serde(default)]
     pub telemetry: TelemetryConfig,
     #[serde(default)]
+    pub shader_cache: ShaderCacheConfig,
+    #[serde(default)]
     pub launch_overrides: HashMap<String, LaunchOverrides>,
 }
 
@@ -33,6 +35,14 @@ pub struct TelemetryConfig {
     pub install_id: Option<String>,
     #[serde(default)]
     pub endpoint: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct ShaderCacheConfig {
+    #[serde(default)]
+    pub community: bool,
+    #[serde(default)]
+    pub index_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

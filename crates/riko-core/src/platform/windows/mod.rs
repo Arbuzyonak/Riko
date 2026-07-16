@@ -49,8 +49,19 @@ pub fn uri_handler_registered() -> bool {
     }
 }
 
-pub fn build_launch_command(cfg: &Config, uri: &str, plugin_env: &ResolvedPluginEnv) -> Command {
+pub fn build_launch_command(
+    cfg: &Config,
+    game_id: u32,
+    uri: &str,
+    plugin_env: &ResolvedPluginEnv,
+) -> Command {
     let mut cmd = Command::new(&cfg.paths.vortex_exe);
+    if cfg.launcher.shader_cache {
+        let cache = crate::shader_cache::dir_for(game_id);
+        std::fs::create_dir_all(&cache).ok();
+        cmd.env("DXVK_STATE_CACHE_PATH", &cache);
+        cmd.env("VKD3D_SHADER_CACHE_PATH", &cache);
+    }
     for (key, value) in &plugin_env.env {
         cmd.env(key, value);
     }

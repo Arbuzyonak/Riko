@@ -83,6 +83,7 @@ export interface ConfigView {
   minimize_while_playing: boolean;
   presence_enabled: boolean;
   telemetry_enabled: boolean;
+  community_shaders: boolean;
   wine_prefix: string;
   vortex_exe: string;
   log_file: string;
@@ -100,6 +101,7 @@ export type ConfigPatch = Partial<{
   minimize_while_playing: boolean;
   presence_enabled: boolean;
   telemetry_enabled: boolean;
+  community_shaders: boolean;
 }>;
 
 export const getConfig = () => invoke<ConfigView>("get_config");

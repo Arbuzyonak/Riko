@@ -15,6 +15,7 @@ pub mod plugin;
 pub mod presence;
 pub mod progress;
 pub mod self_update;
+pub mod shader_cache;
 pub mod setup;
 pub mod shortcuts;
 pub mod telemetry;

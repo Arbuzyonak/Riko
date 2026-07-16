@@ -7,7 +7,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_CATALOG_URL: &str =
-    "https://raw.githubusercontent.com/Arbuzik/riko-plugins/main/catalog.json";
+    "https://raw.githubusercontent.com/Arbuzyonak/Riko/main/marketplace/catalog.json";
 
 const STAGE: &str = "marketplace";
 

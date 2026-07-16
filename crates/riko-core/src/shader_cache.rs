@@ -6,7 +6,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_INDEX_URL: &str =
-    "https://raw.githubusercontent.com/Arbuzik/riko-shaders/main/index.json";
+    "https://raw.githubusercontent.com/Arbuzyonak/Riko/main/shader-cache/index.json";
 
 const STAGE: &str = "shader-cache";
 

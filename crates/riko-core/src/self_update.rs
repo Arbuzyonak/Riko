@@ -1,7 +1,7 @@
 use crate::{net, RikoError};
 use serde::Serialize;
 
-pub const RIKO_REPO: &str = "Arbuzik/riko-launcher";
+pub const RIKO_REPO: &str = "Arbuzyonak/Riko";
 
 #[derive(Clone, Debug, Serialize)]
 pub struct UpdateInfo {

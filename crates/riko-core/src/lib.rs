@@ -9,6 +9,7 @@ pub mod launcher;
 pub mod logger;
 pub mod marketplace;
 pub mod net;
+pub mod overlay;
 pub mod platform;
 pub mod playtime;
 pub mod plugin;

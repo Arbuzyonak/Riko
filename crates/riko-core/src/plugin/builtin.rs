@@ -26,77 +26,11 @@ pub const BUILTINS: &[BuiltinPlugin] = &[
         ],
     },
     BuiltinPlugin {
-        name: "vortex-optim",
-        files: &[
-            (
-                "plugin.toml",
-                include_bytes!("../../plugins/vortex-optim/plugin.toml"),
-            ),
-            (
-                "optimizer.c",
-                include_bytes!("../../plugins/vortex-optim/optimizer.c"),
-            ),
-        ],
-    },
-    BuiltinPlugin {
         name: "mangohud",
         files: &[(
             "plugin.toml",
             include_bytes!("../../plugins/mangohud/plugin.toml"),
         )],
-    },
-    BuiltinPlugin {
-        name: "fsr-upscale",
-        files: &[(
-            "plugin.toml",
-            include_bytes!("../../plugins/fsr-upscale/plugin.toml"),
-        )],
-    },
-    BuiltinPlugin {
-        name: "low-spec-mode",
-        files: &[(
-            "plugin.toml",
-            include_bytes!("../../plugins/low-spec-mode/plugin.toml"),
-        )],
-    },
-    BuiltinPlugin {
-        name: "vkbasalt",
-        files: &[
-            (
-                "plugin.toml",
-                include_bytes!("../../plugins/vkbasalt/plugin.toml"),
-            ),
-            (
-                "vkBasalt.conf",
-                include_bytes!("../../plugins/vkbasalt/vkBasalt.conf"),
-            ),
-        ],
-    },
-    BuiltinPlugin {
-        name: "replay-buffer",
-        files: &[
-            (
-                "plugin.toml",
-                include_bytes!("../../plugins/replay-buffer/plugin.toml"),
-            ),
-            (
-                "replay.sh",
-                include_bytes!("../../plugins/replay-buffer/replay.sh"),
-            ),
-        ],
-    },
-    BuiltinPlugin {
-        name: "ping-logger",
-        files: &[
-            (
-                "plugin.toml",
-                include_bytes!("../../plugins/ping-logger/plugin.toml"),
-            ),
-            (
-                "ping-logger.sh",
-                include_bytes!("../../plugins/ping-logger/ping-logger.sh"),
-            ),
-        ],
     },
 ];
 

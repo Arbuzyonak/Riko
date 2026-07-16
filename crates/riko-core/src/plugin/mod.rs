@@ -334,34 +334,16 @@ mod tests {
     }
 
     #[test]
-    fn builtin_manifests_resolve_expected_env() {
-        let m = builtin::manifest_for("vortex-optim").unwrap();
-        let mut resolved = ResolvedPluginEnv::default();
-        let dir = std::env::temp_dir();
-        apply_manifest(&mut resolved, &m, &dir);
-        assert_eq!(resolved.env.get("DXVK_STATE_CACHE").map(String::as_str), Some("1"));
-        assert_eq!(resolved.env.get("mesa_glthread").map(String::as_str), Some("true"));
-        assert!(resolved.env["DXVK_CONFIG"].contains("dxvk.enableAsync=true"));
+    fn base_builtins_are_only_fps_unlocker_and_mangohud() {
+        let names: Vec<&str> = builtin::BUILTINS.iter().map(|b| b.name).collect();
+        assert_eq!(names, vec!["fps-unlocker", "mangohud"]);
     }
 
     #[test]
-    fn env_only_builtins_resolve() {
+    fn mangohud_builtin_resolves_env() {
         let dir = std::env::temp_dir();
         let mut resolved = ResolvedPluginEnv::default();
         apply_manifest(&mut resolved, &builtin::manifest_for("mangohud").unwrap(), &dir);
         assert_eq!(resolved.env.get("MANGOHUD").map(String::as_str), Some("1"));
-        apply_manifest(&mut resolved, &builtin::manifest_for("fsr-upscale").unwrap(), &dir);
-        assert_eq!(
-            resolved.env.get("WINE_FULLSCREEN_FSR").map(String::as_str),
-            Some("1")
-        );
-        apply_manifest(&mut resolved, &builtin::manifest_for("vkbasalt").unwrap(), &dir);
-        assert_eq!(
-            resolved.env.get("VKBASALT_CONFIG_FILE").map(String::as_str),
-            Some(format!("{}/vkBasalt.conf", dir.display()).as_str())
-        );
-        apply_manifest(&mut resolved, &builtin::manifest_for("low-spec-mode").unwrap(), &dir);
-        assert!(resolved.env["DXVK_CONFIG"].contains("dxvk.numCompilerThreads=2"));
-        assert!(resolved.env["DXVK_CONFIG"].contains("dxvk.maxFrameLatency=1"));
     }
 }

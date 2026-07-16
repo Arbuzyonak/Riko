@@ -4,7 +4,7 @@
 
 # Riko
 
-**A fast, native launcher for [Vortex](https://playvortex.io) with plugins, a plugin marketplace, and first-class Linux and Windows support.**
+**A fast, native launcher for [Vortex](https://playvortex.io) with plugins, a plugin marketplace, and Linux and Windows support.**
 
 [![Build](https://github.com/Arbuzyonak/Riko/actions/workflows/build.yml/badge.svg)](https://github.com/Arbuzyonak/Riko/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/Arbuzyonak/Riko?color=8b5cf6)](https://github.com/Arbuzyonak/Riko/releases/latest)
@@ -15,8 +15,7 @@
 
 ## What is Riko
 
-Riko is a desktop launcher for Vortex, a community gaming platform. On Linux it runs the Windows Vortex client through a managed Wine pipeline; on Windows it launches the native client directly. It adds a real library, per-game launch profiles, a plugin system with a marketplace, playtime stats, a friends panel, Discord Rich Presence, and a Doctor that diagnoses your setup.
-
+Riko is a desktop launcher for Vortex.
 ## Features
 
 - **Game library** with live player counts, thumbnails, and per-game playtime.

@@ -55,7 +55,20 @@ fn write_shortcut(game: &Game, _icon: Option<&std::path::Path>) -> Result<PathBu
     Ok(path)
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(target_os = "macos")]
+fn write_shortcut(game: &Game, _icon: Option<&std::path::Path>) -> Result<PathBuf, RikoError> {
+    let exe = std::env::current_exe()?;
+    let desktop = dirs::desktop_dir()
+        .ok_or_else(|| RikoError::Config("cannot resolve desktop dir".to_string()))?;
+    let path = desktop.join(format!("{}.command", sanitize(&game.name)));
+    let contents = format!("#!/bin/sh\nexec \"{}\" --launch {}\n", exe.display(), game.id);
+    std::fs::write(&path, &contents)?;
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))?;
+    Ok(path)
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn sanitize(name: &str) -> String {
     name.chars()
         .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' })

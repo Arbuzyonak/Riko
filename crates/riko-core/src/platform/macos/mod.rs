@@ -29,16 +29,6 @@ pub fn build_launch_command(
     uri: &str,
     plugin_env: &ResolvedPluginEnv,
 ) -> Command {
-    if let Some(ov) = &plugin_env.launch_override {
-        let mut cmd = Command::new(&ov.program);
-        for (key, value) in &plugin_env.env {
-            cmd.env(key, value);
-        }
-        cmd.args(&ov.args);
-        cmd.arg(uri);
-        return cmd;
-    }
-
     let mut cmd = Command::new(&cfg.wine.binary);
     cmd.env("WINEPREFIX", &cfg.paths.wine_prefix);
     cmd.env("WGPU_BACKEND", "vulkan");

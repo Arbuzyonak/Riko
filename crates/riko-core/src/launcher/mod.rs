@@ -59,11 +59,7 @@ pub async fn launch(
     plugin_env: ResolvedPluginEnv,
     events: mpsc::UnboundedSender<GameEvent>,
 ) -> Result<GameHandle, RikoError> {
-    // A `client` plugin runs a native binary instead of Wine+Vortex.exe, so the
-    // Vortex.exe requirement only applies to the normal launch path.
-    if let Some(ov) = &plugin_env.launch_override {
-        tracing::info!("launch overridden by client plugin '{}' -> {}", ov.plugin, ov.program.display());
-    } else if !cfg.paths.vortex_exe.exists() {
+    if !cfg.paths.vortex_exe.exists() {
         return Err(RikoError::Setup(format!(
             "Vortex.exe not found at {}; run setup first",
             cfg.paths.vortex_exe.display()

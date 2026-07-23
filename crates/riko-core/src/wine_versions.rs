@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 const RELEASES_URL: &str =
     "https://api.github.com/repos/Kron4ek/Wine-Builds/releases?per_page=5";
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const STAGE: &str = "wine-install";
 
 #[derive(Clone, Debug, Serialize)]
@@ -47,6 +47,9 @@ pub fn list_installed() -> Vec<InstalledWine> {
 }
 
 pub async fn list_available() -> Result<Vec<AvailableWine>, RikoError> {
+    if !cfg!(target_os = "linux") {
+        return Ok(vec![]);
+    }
     let resp = crate::net::send_retrying(|| crate::net::shared().get(RELEASES_URL), 3)
         .await?
         .error_for_status()?;
@@ -78,7 +81,7 @@ pub async fn list_available() -> Result<Vec<AvailableWine>, RikoError> {
     Ok(available)
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub async fn install(url: &str, sink: &dyn ProgressSink) -> Result<InstalledWine, RikoError> {
     sink.started(STAGE, "Downloading wine build");
     let resp = crate::net::downloader()
@@ -110,7 +113,7 @@ pub async fn install(url: &str, sink: &dyn ProgressSink) -> Result<InstalledWine
     Ok(installed)
 }
 
-#[cfg(not(unix))]
+#[cfg(not(target_os = "linux"))]
 pub async fn install(_url: &str, _sink: &dyn ProgressSink) -> Result<InstalledWine, RikoError> {
     Err(RikoError::Other(
         "wine builds are only used on Linux".to_string(),
@@ -133,12 +136,12 @@ pub fn remove(name: &str) -> Result<(), RikoError> {
     Ok(())
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn installed_names() -> Vec<String> {
     list_installed().into_iter().map(|w| w.name).collect()
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn extract_tar_xz(bytes: &[u8], dest: &std::path::Path) -> Result<(), RikoError> {
     let decoder = xz2::read::XzDecoder::new(bytes);
     let mut archive = tar::Archive::new(decoder);
@@ -148,7 +151,7 @@ fn extract_tar_xz(bytes: &[u8], dest: &std::path::Path) -> Result<(), RikoError>
     Ok(())
 }
 
-#[cfg(all(test, unix))]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
     use std::io::Write;

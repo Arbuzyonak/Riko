@@ -19,15 +19,33 @@ pub fn uri_handler_registered() -> bool {
     true
 }
 
-fn wine_binary(cfg: &Config) -> &str {
-    if Path::new(&cfg.wine.binary).starts_with(crate::wine_versions::wine_dir()) {
-        return "wine";
-    }
-    &cfg.wine.binary
+const BREW_BINS: [&str; 2] = ["/opt/homebrew/bin", "/usr/local/bin"];
+
+fn wine_binary(cfg: &Config) -> String {
+    let configured = cfg.wine.binary.as_str();
+    let bundled = Path::new(configured).starts_with(crate::wine_versions::wine_dir());
+    let candidates: &[&str] = if bundled || configured.is_empty() {
+        &["wine", "/opt/homebrew/bin/wine", "/usr/local/bin/wine"]
+    } else {
+        return configured.to_string();
+    };
+    candidates
+        .iter()
+        .find(|c| which::which(c).is_ok())
+        .map(|c| c.to_string())
+        .unwrap_or_else(|| "wine".to_string())
+}
+
+fn wine_path_env() -> String {
+    let existing = std::env::var("PATH").unwrap_or_default();
+    format!("{}:{existing}", BREW_BINS.join(":"))
 }
 
 fn wine_available(cfg: &Config) -> bool {
-    which::which(wine_binary(cfg)).is_ok() || which::which("wine").is_ok()
+    which::which(wine_binary(cfg)).is_ok()
+        || BREW_BINS
+            .iter()
+            .any(|d| Path::new(d).join("wine").is_file())
 }
 
 pub fn build_launch_command(
@@ -37,6 +55,7 @@ pub fn build_launch_command(
     plugin_env: &ResolvedPluginEnv,
 ) -> Command {
     let mut cmd = Command::new(wine_binary(cfg));
+    cmd.env("PATH", wine_path_env());
     cmd.env("WINEPREFIX", &cfg.paths.wine_prefix);
     cmd.env("WGPU_BACKEND", "vulkan");
 
@@ -79,6 +98,7 @@ pub fn build_launch_command(
 
 pub fn build_receiver_command(cfg: &Config, path: &Path) -> Command {
     let mut cmd = Command::new(wine_binary(cfg));
+    cmd.env("PATH", wine_path_env());
     cmd.env("WINEPREFIX", &cfg.paths.wine_prefix);
     cmd.env("WINEDEBUG", "-all");
     cmd.arg(path);
@@ -198,6 +218,7 @@ async fn run_shell(stage: &str, command: &str, sink: &dyn ProgressSink) -> Resul
     let mut child = tokio::process::Command::new("sh")
         .arg("-c")
         .arg(format!("{command} 2>&1"))
+        .env("PATH", wine_path_env())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

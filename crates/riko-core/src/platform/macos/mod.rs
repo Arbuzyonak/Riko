@@ -19,8 +19,15 @@ pub fn uri_handler_registered() -> bool {
     true
 }
 
+fn wine_binary(cfg: &Config) -> &str {
+    if Path::new(&cfg.wine.binary).starts_with(crate::wine_versions::wine_dir()) {
+        return "wine";
+    }
+    &cfg.wine.binary
+}
+
 fn wine_available(cfg: &Config) -> bool {
-    which::which(&cfg.wine.binary).is_ok() || which::which("wine").is_ok()
+    which::which(wine_binary(cfg)).is_ok() || which::which("wine").is_ok()
 }
 
 pub fn build_launch_command(
@@ -29,7 +36,7 @@ pub fn build_launch_command(
     uri: &str,
     plugin_env: &ResolvedPluginEnv,
 ) -> Command {
-    let mut cmd = Command::new(&cfg.wine.binary);
+    let mut cmd = Command::new(wine_binary(cfg));
     cmd.env("WINEPREFIX", &cfg.paths.wine_prefix);
     cmd.env("WGPU_BACKEND", "vulkan");
 
@@ -71,7 +78,7 @@ pub fn build_launch_command(
 }
 
 pub fn build_receiver_command(cfg: &Config, path: &Path) -> Command {
-    let mut cmd = Command::new(&cfg.wine.binary);
+    let mut cmd = Command::new(wine_binary(cfg));
     cmd.env("WINEPREFIX", &cfg.paths.wine_prefix);
     cmd.env("WINEDEBUG", "-all");
     cmd.arg(path);
@@ -164,7 +171,7 @@ pub async fn execute_setup_step(
                 &format!(
                     "WINEPREFIX=\"{}\" WINEDEBUG=-all {} wineboot --init",
                     prefix.display(),
-                    cfg.wine.binary
+                    wine_binary(cfg)
                 ),
                 sink,
             )

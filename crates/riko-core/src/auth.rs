@@ -1,9 +1,16 @@
 use crate::config::{Config, StoredAccount};
-use crate::{net, RikoError, USER_AGENT, VORTEX_BASE};
+use crate::{net, RikoError, VORTEX_BASE};
 
-pub async fn login_direct(username: &str, password: &str) -> Result<String, RikoError> {
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(tag = "status")]
+pub enum LoginOutcome {
+    Success { session_token: String },
+    #[serde(rename = "requires_2fa")]
+    Requires2fa { pending_token: String },
+}
+
+pub async fn login_direct(username: &str, password: &str) -> Result<LoginOutcome, RikoError> {
     let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
@@ -21,7 +28,18 @@ pub async fn login_direct(username: &str, password: &str) -> Result<String, Riko
     let status = resp.status();
     if status.is_redirection() || status.is_success() {
         if let Some(cookie) = resp.cookies().find(|c| c.name() == "session_token") {
-            return Ok(cookie.value().to_string());
+            return Ok(LoginOutcome::Success {
+                session_token: cookie.value().to_string(),
+            });
+        }
+        let body = resp.text().await.unwrap_or_default();
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&body)
+            && v.get("requires_2fa").and_then(|b| b.as_bool()) == Some(true)
+            && let Some(token) = v.get("pending_token").and_then(|s| s.as_str())
+        {
+            return Ok(LoginOutcome::Requires2fa {
+                pending_token: token.to_string(),
+            });
         }
         return Err(RikoError::Auth(
             "server accepted login but set no session_token cookie".to_string(),
@@ -33,6 +51,40 @@ pub async fn login_direct(username: &str, password: &str) -> Result<String, Riko
         .ok()
         .and_then(|v| v["detail"].as_str().map(str::to_string))
         .unwrap_or_else(|| "invalid username or password".to_string());
+    Err(RikoError::Auth(detail))
+}
+
+pub async fn login_2fa(pending_token: &str, code: &str) -> Result<String, RikoError> {
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
+
+    let resp = client
+        .post(format!("{VORTEX_BASE}/login/2fa"))
+        .form(&[
+            ("pending_token", pending_token),
+            ("code", code),
+            ("fingerprint", ""),
+            ("fp_token", ""),
+        ])
+        .send()
+        .await?;
+
+    let status = resp.status();
+    if status.is_redirection() || status.is_success() {
+        if let Some(cookie) = resp.cookies().find(|c| c.name() == "session_token") {
+            return Ok(cookie.value().to_string());
+        }
+        return Err(RikoError::Auth(
+            "server accepted 2FA code but set no session_token cookie".to_string(),
+        ));
+    }
+
+    let body = resp.text().await.unwrap_or_default();
+    let detail = serde_json::from_str::<serde_json::Value>(&body)
+        .ok()
+        .and_then(|v| v["detail"].as_str().map(str::to_string))
+        .unwrap_or_else(|| "invalid verification code".to_string());
     Err(RikoError::Auth(detail))
 }
 

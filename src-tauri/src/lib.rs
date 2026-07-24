@@ -90,6 +90,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::auth::get_app_status,
             commands::auth::login,
+            commands::auth::login_2fa,
             commands::auth::logout,
             commands::auth::list_accounts,
             commands::auth::switch_account,

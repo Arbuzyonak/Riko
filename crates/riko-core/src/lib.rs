@@ -28,5 +28,7 @@ pub use config::Config;
 pub use error::RikoError;
 pub use progress::{LogLevel, NullSink, ProgressEvent, ProgressSink};
 
+pub use auth::LoginOutcome;
+
 pub const VORTEX_BASE: &str = "https://playvortex.io";
 pub const USER_AGENT: &str = "riko-launcher/0.1.0";

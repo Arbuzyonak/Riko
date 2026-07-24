@@ -28,12 +28,40 @@ pub async fn login(
     state: State<'_, AppState>,
     username: String,
     password: String,
+) -> Result<LoginResponse, RikoError> {
+    match riko_core::auth::login_direct(&username, &password).await? {
+        riko_core::LoginOutcome::Success { session_token } => {
+            let mut cfg = state.config.write().await;
+            riko_core::auth::upsert_account(&mut cfg, &username, &session_token);
+            cfg.save()?;
+            Ok(LoginResponse::Success { username })
+        }
+        riko_core::LoginOutcome::Requires2fa { pending_token } => {
+            Ok(LoginResponse::Requires2fa { pending_token })
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn login_2fa(
+    state: State<'_, AppState>,
+    username: String,
+    pending_token: String,
+    code: String,
 ) -> Result<String, RikoError> {
-    let token = riko_core::auth::login_direct(&username, &password).await?;
+    let token = riko_core::auth::login_2fa(&pending_token, &code).await?;
     let mut cfg = state.config.write().await;
     riko_core::auth::upsert_account(&mut cfg, &username, &token);
     cfg.save()?;
     Ok(username)
+}
+
+#[derive(Serialize)]
+#[serde(tag = "status")]
+pub enum LoginResponse {
+    Success { username: String },
+    #[serde(rename = "requires_2fa")]
+    Requires2fa { pending_token: String },
 }
 
 #[tauri::command]

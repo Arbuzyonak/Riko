@@ -17,8 +17,23 @@ export interface Game {
 
 export const getAppStatus = () => invoke<AppStatus>("get_app_status");
 
+export type LoginResponse =
+  | { status: "success"; username: string }
+  | { status: "requires_2fa"; pending_token: string };
+
 export const login = (username: string, password: string) =>
-  invoke<string>("login", { username, password });
+  invoke<LoginResponse>("login", { username, password });
+
+export const login2fa = (
+  username: string,
+  pendingToken: string,
+  code: string,
+) =>
+  invoke<string>("login_2fa", {
+    username,
+    pendingToken,
+    code,
+  });
 
 export const logout = () => invoke<void>("logout");
 

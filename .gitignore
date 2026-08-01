@@ -3,3 +3,4 @@ node_modules/
 dist/
 .svelte-kit/
 *.log
+src-tauri/gen/schemas/windows-schema.json

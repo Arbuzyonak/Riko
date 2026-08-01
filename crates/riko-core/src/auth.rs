@@ -20,8 +20,14 @@ pub async fn login_direct(username: &str, password: &str) -> Result<String, Riko
 
     let status = resp.status();
     if status.is_redirection() || status.is_success() {
-        if let Some(cookie) = resp.cookies().find(|c| c.name() == "session_token") {
-            return Ok(cookie.value().to_string());
+        let token = resp
+            .cookies()
+            .filter(|c| c.name() == "session_token")
+            .map(|c| c.value().trim_matches('"').to_string())
+            .filter(|v| !v.is_empty())
+            .last();
+        if let Some(token) = token {
+            return Ok(token);
         }
         return Err(RikoError::Auth(
             "server accepted login but set no session_token cookie".to_string(),
@@ -104,7 +110,7 @@ pub async fn validate_session(token: &str) -> Result<bool, RikoError> {
     let resp = net::send_retrying(
         || {
             net::shared()
-                .get(format!("{VORTEX_BASE}/api/games/1"))
+                .get(format!("{VORTEX_BASE}/api/friends"))
                 .header("Cookie", format!("session_token={token}"))
         },
         3,
@@ -115,7 +121,7 @@ pub async fn validate_session(token: &str) -> Result<bool, RikoError> {
 }
 
 pub async fn get_play_uri(session_token: &str, game_id: u32) -> Result<String, RikoError> {
-    let resp = net::shared()
+    let resp = net::no_redirect()
         .get(format!("{VORTEX_BASE}/games/{game_id}/play"))
         .header("Cookie", format!("session_token={session_token}"))
         .send()
@@ -123,7 +129,7 @@ pub async fn get_play_uri(session_token: &str, game_id: u32) -> Result<String, R
 
     let status = resp.status();
     if !status.is_success() {
-        if matches!(status.as_u16(), 401 | 403) {
+        if matches!(status.as_u16(), 401 | 403) || status.is_redirection() {
             return Err(RikoError::NotLoggedIn);
         }
         return Err(RikoError::Auth(format!(
